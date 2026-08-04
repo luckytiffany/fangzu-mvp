@@ -78,9 +78,21 @@
   .prop-head .chev{color:var(--sub);transition:.2s}
   .prop-head.open .chev{transform:rotate(90deg)}
   @media(max-width:760px){.app{flex-direction:column}.sidebar{width:100%;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--line)}.nav-children.open{display:flex;flex-direction:column}}
+  /* 入口登录页 */
+  #authScreen{position:fixed;inset:0;background:linear-gradient(160deg,#e9f9f0,#f2f4f7);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+  body.logged-out #authScreen{display:flex}
+  body.logged-out .app{display:none}
+  .auth-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px 22px;width:100%;max-width:360px;box-shadow:0 8px 30px rgba(20,30,50,.08)}
+  .auth-card .brand{font-size:20px;justify-content:center;padding-bottom:4px}
+  .auth-card .sub{text-align:center;color:var(--sub);font-size:13px;margin:4px 0 18px}
+  .auth-card label{margin-top:12px}
+  .auth-card .row-actions{margin-top:16px}
+  .auth-card .switch{text-align:center;margin-top:16px;font-size:13px;color:var(--sub)}
+  .auth-card .switch a{color:var(--brand-d);cursor:pointer;font-weight:600}
+  .auth-err{color:var(--danger);font-size:13px;min-height:18px;margin-top:8px}
 </style>
 </head>
-<body>
+<body class="logged-out">
 <div class="app">
   <aside class="sidebar">
     <div class="brand"><span class="logo">🏠</span>房租水电</div>
@@ -104,6 +116,19 @@
     <div class="nav-group"><div class="nav-leaf" data-view="cloud">☁️ 云同步</div></div>
   </aside>
   <main class="content" id="content"></main>
+</div>
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="brand"><span class="logo">🏠</span> 房租水电管理</div>
+    <div class="sub">房东登录 · 数据自动云端同步</div>
+    <label>手机号</label>
+    <input id="a_phone" placeholder="请输入手机号" inputmode="numeric" maxlength="15">
+    <label>密码</label>
+    <input id="a_pw" type="password" placeholder="至少6位">
+    <div class="auth-err" id="a_err"></div>
+    <div class="row-actions"><button class="btn-primary" id="a_submit" style="flex:1" onclick="authSubmit()">登 录</button></div>
+    <div class="switch">还没有账号？<a onclick="authToggle()">注册新账号</a></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 <script src="supabase.min.js"></script>
@@ -582,27 +607,50 @@ function dataSample(){
 }
 
 /* ---------- 初始 ---------- */
-showView("addProperty");
-
 /* ---------- 云同步（Supabase） ---------- */
 const CLOUD_KEY="rental_mvp_cloud";
-let cloud={url:"",anonKey:"",client:null,user:null,lastSync:null};
+const SUPABASE_URL="https://oegmxcrcdrzqwyeymmgb.supabase.co";
+const SUPABASE_ANON="sb_publishable_nUpi6djsVjIVX0PkwRj_tg_aDkAEQW3";
+let cloud={url:SUPABASE_URL,anonKey:SUPABASE_ANON,client:null,user:null,lastSync:null};
 let _syncTimer=null,_syncing=false;
-function loadCloudCfg(){try{const c=JSON.parse(localStorage.getItem(CLOUD_KEY));if(c){cloud.url=c.url||"";cloud.anonKey=c.anonKey||"";cloud.lastSync=c.lastSync||null;}}catch(e){}}
+function loadCloudCfg(){try{const c=JSON.parse(localStorage.getItem(CLOUD_KEY));if(c&&c.url&&c.anonKey){cloud.url=c.url;cloud.anonKey=c.anonKey;cloud.lastSync=c.lastSync||null;return;}}catch(e){}cloud.url=SUPABASE_URL;cloud.anonKey=SUPABASE_ANON;}
 function saveCloudCfg(){try{localStorage.setItem(CLOUD_KEY,JSON.stringify({url:cloud.url,anonKey:cloud.anonKey,lastSync:cloud.lastSync}));}catch(e){}}
 function getClient(){if(cloud.client)return cloud.client;if(!cloud.url||!cloud.anonKey)return null;if(!window.supabase){toast("组件未加载：请把 supabase.min.js 放在 index.html 同目录后刷新");return null;}try{cloud.client=window.supabase.createClient(cloud.url,cloud.anonKey);}catch(e){return null;}return cloud.client;}
 function touch(){return new Date().toISOString();}
 function scheduleSync(){if(!cloud.user||_syncing)return;clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{pushToCloud();},1200);}
 function renderCloudIfActive(){const el=document.querySelector('[data-view="cloud"]');if(el&&el.classList.contains('active'))renderCloud();}
-function startupCloud(){loadCloudCfg();if(!cloud.url||!cloud.anonKey)return;const sb=getClient();if(!sb)return;sb.auth.getSession().then(({data})=>{if(data.session){cloud.user=data.session.user;pullFromCloud(true).then(()=>renderCloudIfActive());}}).catch(()=>{});}
+function startupCloud(){loadCloudCfg();const sb=getClient();if(!sb){document.body.classList.add("logged-out");return;}sb.auth.getSession().then(({data})=>{if(data.session){cloud.user=data.session.user;pullFromCloud(true).then(()=>{document.body.classList.remove("logged-out");showView("addProperty");});}else{document.body.classList.add("logged-out");}}).catch(()=>{document.body.classList.add("logged-out");});}
 function saveCloudConfig(){cloud.url=$("c_url").value.trim();cloud.anonKey=$("c_key").value.trim();if(!cloud.url||!cloud.anonKey){toast("请填写完整");return;}cloud.client=null;getClient();saveCloudCfg();toast("配置已保存");renderCloud();}
-async function cloudSignIn(){const email=$("c_email").value.trim();const pw=$("c_pw").value;const sb=getClient();if(!sb){toast("请先填写并保存配置");return;}if(!email||!pw){toast("请输入邮箱和密码");return;}const {error}=await sb.auth.signInWithPassword({email,password});if(error){toast("登录失败："+error.message);return;}const {data}=await sb.auth.getSession();cloud.user=data.session?data.session.user:null;toast("登录成功");await pullFromCloud(true);renderCloud();}
-async function cloudSignUp(){const email=$("c_email").value.trim();const pw=$("c_pw").value;const sb=getClient();if(!sb)return;if(!email||!pw){toast("请输入邮箱和密码");return;}if(pw.length<6){toast("密码至少6位");return;}const {data,error}=await sb.auth.signUp({email,password});if(error){toast("注册失败："+error.message);return;}if(data&&data.session){cloud.user=data.session.user;toast("注册成功，已自动登录");await pullFromCloud(true);renderCloud();return;}toast("注册成功，请查收验证邮件后登录");}
+function normLogin(phone){return (phone||"").replace(/\s/g,"")+"@login.local";}
+let _authMode="login";
+function authToggle(){_authMode=_authMode==="login"?"signup":"login";$("a_submit").textContent=_authMode==="login"?"登 录":"注 册";$("a_err").textContent="";$("a_phone").value="";$("a_pw").value="";if($("a_phone").focus)$("a_phone").focus();}
+async function authSubmit(){
+  const phone=$("a_phone").value.trim();const pw=$("a_pw").value;$("a_err").textContent="";
+  if(!/^\d{6,15}$/.test(phone)){$("a_err").textContent="请输入正确的手机号";return;}
+  if(pw.length<6){$("a_err").textContent="密码至少6位";return;}
+  const sb=getClient();if(!sb){$("a_err").textContent="服务未连接，请刷新页面";return;}
+  const email=normLogin(phone);
+  try{
+    if(_authMode==="signup"){
+      const {data,error}=await sb.auth.signUp({email,password:pw});
+      if(error){$("a_err").textContent="注册失败："+error.message;return;}
+      if(data&&data.session){cloud.user=data.session.user;await pullFromCloud(true);enterApp();return;}
+      $("a_err").textContent="注册成功，但需先验证。请在 Supabase 关掉 Confirm email 后重试登录";_authMode="login";$("a_submit").textContent="登 录";return;
+    }else{
+      const {error}=await sb.auth.signInWithPassword({email,password:pw});
+      if(error){$("a_err").textContent="登录失败："+error.message;return;}
+      const {data}=await sb.auth.getSession();cloud.user=data.session?data.session.user:null;
+      if(!cloud.user){$("a_err").textContent="登录失败，请重试";return;}
+      await pullFromCloud(true);enterApp();
+    }
+  }catch(e){$("a_err").textContent="出错了："+(e&&e.message?e.message:e);}
+}
+function enterApp(){document.body.classList.remove("logged-out");renderCloud();showView("addProperty");}
 function cloudSignOut(){const sb=getClient();if(sb)sb.auth.signOut();cloud.user=null;renderCloud();toast("已登出");}
 function mergeById(local,remote,keyFn){const map=new Map(local.map(x=>[keyFn(x),x]));remote.forEach(rv=>{const k=keyFn(rv);const lv=map.get(k);if(!lv)map.set(k,rv);else if(!lv.updated_at||(rv.updated_at&&rv.updated_at>lv.updated_at))map.set(k,rv);});return [...map.values()];}
 async function pullFromCloud(silent){const sb=getClient();if(!sb||!cloud.user)return;if(_syncing)return;_syncing=true;try{const [pr,rr,rdr,dr]=await Promise.all([sb.from('properties').select('*'),sb.from('rooms').select('*'),sb.from('readings').select('*'),sb.from('settings').select('*').maybeSingle()]);if(pr.error)throw pr.error;if(rr.error)throw rr.error;if(rdr.error)throw rdr.error;if(dr.error)throw dr.error;const P=(pr.data||[]).map(rv=>({id:rv.id,name:rv.name,location:rv.location,lat:rv.lat,lng:rv.lng,updated_at:rv.updated_at}));const R=(rr.data||[]).map(rv=>({id:rv.id,propertyId:rv.property_id,name:rv.name,tenant:rv.tenant,leaseStart:rv.lease_start,leaseEnd:rv.lease_end,rent:rv.rent,mgmtFee:rv.mgmt_fee,waterPrice:rv.water_price,elecPrice:rv.elec_price,gasPrice:rv.gas_price,hotPrice:rv.hot_price,updated_at:rv.updated_at}));const Rd=(rdr.data||[]).map(rv=>({roomId:rv.room_id,month:rv.month,waterStart:rv.water_start,waterEnd:rv.water_end,elecStart:rv.elec_start,elecEnd:rv.elec_end,gasStart:rv.gas_start,gasEnd:rv.gas_end,hotStart:rv.hot_start,hotEnd:rv.hot_end,updated_at:rv.updated_at}));state.properties=mergeById(state.properties,P,x=>x.id);state.rooms=mergeById(state.rooms,R,x=>x.id);state.readings=mergeById(state.readings,Rd,x=>x.roomId+x.month);if(dr&&dr.data){state.defaults={water:dr.data.water??DEF.water,elec:dr.data.elec??DEF.elec,gas:dr.data.gas??DEF.gas,hot:dr.data.hot??DEF.hot,mgmt:dr.data.mgmt??DEF.mgmt};}save();cloud.lastSync=touch();saveCloudCfg();if(!silent)renderCloud();if(!silent)toast("已从云端同步");}catch(e){if(!silent)toast("同步失败："+(e&&e.message?e.message:e));}finally{_syncing=false;}}
 async function pushToCloud(){const sb=getClient();if(!sb||!cloud.user)return;if(_syncing)return;_syncing=true;try{const t=touch();const P=state.properties.map(x=>({id:x.id,name:x.name,location:x.location,lat:x.lat,lng:x.lng,user_id:cloud.user.id,updated_at:t}));const R=state.rooms.map(x=>({id:x.id,property_id:x.propertyId,name:x.name,tenant:x.tenant,lease_start:x.leaseStart,lease_end:x.leaseEnd,rent:x.rent,mgmt_fee:x.mgmtFee,water_price:x.waterPrice,elec_price:x.elecPrice,gas_price:x.gasPrice,hot_price:x.hotPrice,user_id:cloud.user.id,updated_at:t}));const Rd=state.readings.map(x=>({user_id:cloud.user.id,room_id:x.roomId,month:x.month,water_start:x.waterStart,water_end:x.waterEnd,elec_start:x.elecStart,elec_end:x.elecEnd,gas_start:x.gasStart,gas_end:x.gasEnd,hot_start:x.hotStart,hot_end:x.hotEnd,updated_at:t}));const a1=await sb.from('properties').upsert(P);if(a1.error)throw a1.error;const a2=await sb.from('rooms').upsert(R);if(a2.error)throw a2.error;const a3=await sb.from('readings').upsert(Rd,{onConflict:'user_id,room_id,month'});if(a3.error)throw a3.error;const a4=await sb.from('settings').upsert({user_id:cloud.user.id,water:state.defaults.water,elec:state.defaults.elec,gas:state.defaults.gas,hot:state.defaults.hot,mgmt:state.defaults.mgmt,updated_at:t});if(a4.error)throw a4.error;cloud.lastSync=t;saveCloudCfg();toast("已同步到云端");}catch(e){toast("同步失败："+(e&&e.message?e.message:e));}finally{_syncing=false;}}
-function renderCloud(){const logged=!!cloud.user;const ls=cloud.lastSync?new Date(cloud.lastSync).toLocaleString('zh-CN'):'从未';let html=`<div class="topbar">☁️ 云同步（Supabase）</div>`;html+=`<div class="card"><h2>1. 连接配置</h2><div class="grid g2"><div><label>Supabase URL</label><input id="c_url" placeholder="https://xxxx.supabase.co"></div><div><label>Anon Key（公开 key）</label><input id="c_key" placeholder="eyJ..."></div></div><div class="row-actions"><button class="btn-primary" onclick="saveCloudConfig()">保存配置</button><span class="muted">在 Supabase 项目 Settings → API 复制</span></div></div>`;html+=`<div class="card"><h2>2. 账号（邮箱+密码）</h2><div class="grid g2"><div><label>邮箱</label><input id="c_email" placeholder="you@example.com"></div><div><label>密码</label><input id="c_pw" type="password" placeholder="至少6位"></div></div><div class="row-actions">`;if(logged){html+=`<button class="btn-line" onclick="cloudSignOut()">登出</button><span class="tag-ok">已登录：${escapeHtml(cloud.user.email)}</span>`;}else{html+=`<button class="btn-primary" onclick="cloudSignIn()">登录</button><button class="btn-ghost" onclick="cloudSignUp()">注册</button>`;}html+=`</div></div>`;if(logged){html+=`<div class="card"><h2>3. 同步</h2><div class="muted">上次同步：${ls}</div><div class="row-actions"><button class="btn-primary" onclick="pushToCloud()">立即上传到云端</button><button class="btn-ghost" onclick="pullFromCloud(false)">从云端拉取</button></div><div class="hint">每次本地保存（房源/房间/读数）后会自动上传。建议仍保留每月 JSON 备份作双保险。</div></div>`;}html+=`<div class="card"><div class="muted">说明：云同步把房源/房间/读数/默认费用存到免费 Supabase 数据库，换手机、换电脑登录同一账号即可恢复全部历史。数据按账号隔离，仅你可见。</div></div>`;$("content").innerHTML=html;}
+function renderCloud(){const logged=!!cloud.user;const phone=logged?(cloud.user.email||"").replace("@login.local",""):"";const ls=cloud.lastSync?new Date(cloud.lastSync).toLocaleString('zh-CN'):'从未';let html=`<div class="topbar">☁️ 云同步</div>`;if(logged){html+=`<div class="card"><h2>账号</h2><div class="muted">已登录手机号：${escapeHtml(phone)}</div><div class="row-actions"><button class="btn-line" onclick="cloudSignOut()">退出登录</button></div></div>`;html+=`<div class="card"><h2>同步</h2><div class="muted">上次同步：${ls}</div><div class="row-actions"><button class="btn-primary" onclick="pushToCloud()">立即上传到云端</button><button class="btn-ghost" onclick="pullFromCloud(false)">从云端拉取</button></div><div class="hint">每次本地保存（房源/房间/读数）后会自动上传。建议仍保留每月 JSON 备份作双保险。</div></div>`;}else{html+=`<div class="card"><div class="muted">未登录。请在打开应用时用手机号和密码登录。</div></div>`;}html+=`<div class="card"><div class="muted">说明：云同步把房源/房间/读数/默认费用存到免费 Supabase 数据库，换手机、换电脑登录同一手机号即可恢复全部历史。数据按账号隔离，仅你可见。</div></div>`;$("content").innerHTML=html;}
 startupCloud();
 </script>
 </body>
