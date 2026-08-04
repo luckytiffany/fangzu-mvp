@@ -77,6 +77,13 @@
   .prop-head:hover{background:#f2f4f7}
   .prop-head .chev{color:var(--sub);transition:.2s}
   .prop-head.open .chev{transform:rotate(90deg)}
+  /* 生成账单-房间折叠 */
+  .bill-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:6px 2px;border-radius:10px}
+  .bill-head:hover{background:#f7f9fb}
+  .bill-head:active{background:#eef2f6}
+  .bill-title{display:flex;align-items:center;gap:9px;min-width:0}
+  .bill-title .chev{color:var(--sub);transition:transform .2s;font-size:15px;display:inline-block}
+  .room-name{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:.5px}
   @media(max-width:760px){.app{flex-direction:column}.sidebar{width:100%;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--line)}.nav-children.open{display:flex;flex-direction:column}}
   /* 入口登录页 */
   #authScreen{position:fixed;inset:0;background:linear-gradient(160deg,#e9f9f0,#f2f4f7);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
@@ -615,15 +622,22 @@ function renderBill(){
       ['燃气费',reading?fmt(b.gC)+' 方 × '+fmt(r.gasPrice)+' = '+fmt(b.gCost):'未抄表'],
       ['热水费',reading?fmt(b.hC)+' 吨 × '+fmt(r.hotPrice)+' = '+fmt(b.hotCost):'未抄表'],
     ].map(([k,v])=>`<div class="bar" style="padding:4px 0"><span>${k}</span><b>¥${v}</b></div>`).join("");
-    html+=`<div class="card">
-      <div class="bar"><div><b>${escapeHtml(r.name)}</b> <span class="muted">${escapeHtml(getPropName(r))} · ${escapeHtml(r.tenant||"未填租客")}</span></div>
-        <span class="${reading?'tag-ok':'tag-warn'}">${reading?'已抄表':'未抄表'}</span></div>
-      <div style="border-top:1px solid var(--line);margin:6px 0">${rows}</div>
-      <div class="bar" style="border-top:2px solid var(--brand);padding-top:8px"><span>本月应交租金合计</span><b style="color:var(--brand-d);font-size:18px">¥${fmt(b.total)}</b></div>
-      <div class="row-actions">
-        <button class="btn-ghost" onclick="sharePreview('${r.id}','${m}')">预览分享页</button>
-        <button class="btn-line" onclick="shareDownload('${r.id}','${m}')">下载分享页</button>
-        <button class="btn-line" onclick="copyText(\`${encodeURIComponent(text)}\`)">复制账单文案</button>
+    html+=`<div class="card bill-card">
+      <div class="bill-head" onclick="toggleBillRoom('${r.id}')">
+        <div class="bill-title">
+          <span class="chev" id="chev_${r.id}">▸</span>
+          <b class="room-name">${escapeHtml(r.name)}</b>
+          <span class="muted">${escapeHtml(getPropName(r))} · ${escapeHtml(r.tenant||"未填租客")}</span>
+        </div>
+        <span class="${reading?'tag-ok':'tag-warn'}">${reading?'已抄表':'未抄表'}</span>
+      </div>
+      <div class="bill-body" id="billbody_${r.id}" style="display:none">
+        <div style="border-top:1px solid var(--line);margin:6px 0">${rows}</div>
+        <div class="bar" style="border-top:2px solid var(--brand);padding-top:8px"><span>本月应交租金合计</span><b style="color:var(--brand-d);font-size:18px">¥${fmt(b.total)}</b></div>
+        <div class="row-actions">
+          <button class="btn-ghost" onclick="downloadBillImage('${r.id}','${m}')">账单下载</button>
+          <button class="btn-line" onclick="copyText(\`${encodeURIComponent(text)}\`)">复制账单文案</button>
+        </div>
       </div>
     </div>`;
   });
@@ -640,6 +654,12 @@ function renderBill(){
       <div class="row-actions"><button class="btn-ghost" onclick="copyAll()">复制全部汇总文案</button></div>
     </div>${html}`;
 }
+function toggleBillRoom(id){
+  const body=document.getElementById('billbody_'+id);const chev=document.getElementById('chev_'+id);
+  if(!body)return;const hidden=body.style.display==='none';
+  body.style.display=hidden?'block':'none';
+  if(chev)chev.style.transform=hidden?'rotate(90deg)':'rotate(0deg)';
+}
 function copyAll(){
   const m=lastBillMonth;let all="【"+monthLabel(m)+" 整栋汇总】\n";
   let totRent=0,totMgmt=0,totUtil=0;
@@ -648,48 +668,75 @@ function copyAll(){
   copyText(encodeURIComponent(all));
 }
 
-/* ---------- 分享页 ---------- */
-function buildShareHTML(r,reading,m){
-  const b=computeBill(r,reading);const prop=escapeHtml(getPropName(r));
-  const item=(label,detail,amt)=>`<div class="row"><span>${label}${detail?`<small>${detail}</small>`:''}</span><b>¥${amt}</b></div>`;
-  let body='';
-  body+=item('月租','',fmt(r.rent));body+=item('管理费','',fmt(r.mgmtFee));
-  if(reading&&reading.waterStart!=null&&reading.waterEnd!=null)body+=item('水费',`${fmt(b.wC)} 吨 × ${fmt(r.waterPrice)}`,fmt(b.wCost));
-  if(reading&&reading.elecStart!=null&&reading.elecEnd!=null)body+=item('电费',`${fmt(b.eC)} 度 × ${fmt(r.elecPrice)}`,fmt(b.eCost));
-  if(reading&&reading.gasStart!=null&&reading.gasEnd!=null)body+=item('燃气费',`${fmt(b.gC)} 方 × ${fmt(r.gasPrice)}`,fmt(b.gCost));
-  if(reading&&reading.hotStart!=null&&reading.hotEnd!=null)body+=item('热水费',`${fmt(b.hC)} 吨 × ${fmt(r.hotPrice)}`,fmt(b.hotCost));
-  const note=reading?'请于每月约定日前支付，转入后请截图留存，谢谢配合！':'本月账单尚在核算中，稍后更新。';
-  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${prop} · ${escapeHtml(r.name)} ${monthLabel(m)}账单</title>
-<style>
- body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#eef1f6;color:#1f2733;padding:16px}
- .box{max-width:460px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(20,30,50,.08)}
- .hd{background:linear-gradient(135deg,#07c160,#0ad06a);color:#fff;padding:20px}
- .hd .p{opacity:.9;font-size:13px}.hd h1{margin:4px 0 0;font-size:20px}
- .hd .sub{margin-top:6px;font-size:13px;opacity:.95}
- .bd{padding:16px}
- .row{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid #f0f2f6;font-size:15px}
- .row small{display:block;color:#8a94a6;font-size:12px;margin-top:2px}
- .row b{font-size:16px}
- .total{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:14px 16px;background:#e6f7ee;border-radius:12px}
- .total .l{font-size:14px;color:#06a050;font-weight:700}.total .v{font-size:24px;font-weight:800;color:#06a050}
- .note{margin-top:14px;font-size:13px;color:#6b7785;line-height:1.7}
- .ft{text-align:center;color:#aab2c0;font-size:12px;padding:14px}
-</style></head><body><div class="box">
- <div class="hd"><div class="p">${prop}</div><h1>房租水电费账单</h1>
-   <div class="sub">${escapeHtml(r.name)} · ${escapeHtml(r.tenant||"租户")} · ${monthLabel(m)}</div></div>
- <div class="bd">${body}
-   <div class="total"><span class="l">本月应交租金合计</span><span class="v">¥${fmt(b.total)}</span></div>
-   <div class="note">${note}</div></div>
- <div class="ft">本账单由房东通过「房租水电管理」生成</div>
-</div></body></html>`;
+/* ---------- 账单图片（16:9 插画风） ---------- */
+function bi_roundRect(x,X,Y,W,H,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath();}
+function bi_cloud(x,cx,cy,r){x.beginPath();x.arc(cx,cy,r,Math.PI*.95,Math.PI*2.05);x.arc(cx+r*.8,cy+r*.32,r*.7,Math.PI*.95,Math.PI*2.05);x.arc(cx-r*.8,cy+r*.32,r*.7,Math.PI*.95,Math.PI*2.05);x.closePath();x.fill();}
+function bi_house(x,bx,by,w,h){
+  x.fillStyle='#ffffff';
+  x.beginPath();x.moveTo(bx-12,by);x.lineTo(bx+w/2,by-h*.62);x.lineTo(bx+w+12,by);x.closePath();x.fill();
+  x.fillRect(bx,by,w,h);
+  x.fillStyle='rgba(15,184,106,.92)';x.fillRect(bx+w*.36,by+h*.42,w*.28,h*.58);
+  x.fillStyle='rgba(255,255,255,.95)';x.fillRect(bx+w*.12,by+h*.16,w*.2,h*.2);x.fillRect(bx+w*.68,by+h*.16,w*.2,h*.2);
 }
-function sharePreview(rid,m){const r=state.rooms.find(x=>x.id===rid);if(!r)return;
-  window.open(URL.createObjectURL(new Blob([buildShareHTML(r,getReading(rid,m),m)],{type:'text/html'})),'_blank');}
-function shareDownload(rid,m){const r=state.rooms.find(x=>x.id===rid);if(!r)return;
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buildShareHTML(r,getReading(rid,m),m)],{type:'text/html'}));
-  a.download=`账单_${getPropName(r)}_${r.name}_${m}.html`;a.click();toast("分享页已下载");}
+function bi_coin(x,cx,cy,r){
+  x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.fillStyle='#ffd45e';x.fill();
+  x.lineWidth=Math.max(2,r*.12);x.strokeStyle='#efb429';x.stroke();
+  x.fillStyle='#b9791a';x.font='bold '+(r*1.05)+'px -apple-system,"PingFang SC",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('¥',cx,cy+r*.04);
+}
+function downloadBillImage(rid,m){
+  const r=state.rooms.find(x=>x.id===rid);if(!r)return;
+  const reading=getReading(rid,m);const b=computeBill(r,reading);
+  const W=1280,H=720,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const F='"PingFang SC","Microsoft YaHei",-apple-system,sans-serif';
+  x.fillStyle='#eef3f8';x.fillRect(0,0,W,H);
+  // 插画风表头
+  const g=x.createLinearGradient(0,0,0,236);g.addColorStop(0,'#16c47e');g.addColorStop(1,'#0aa85f');
+  x.fillStyle=g;x.fillRect(0,0,W,236);
+  x.save();x.globalAlpha=.16;x.fillStyle='#ffffff';bi_cloud(x,210,72,46);bi_cloud(x,366,108,32);
+  x.beginPath();x.arc(1140,66,66,0,Math.PI*2);x.fill();x.restore();
+  bi_house(x,96,132,150,104);
+  bi_coin(x,1070,182,30);bi_coin(x,1138,206,22);
+  // 表头文字
+  x.fillStyle='#ffffff';x.textBaseline='middle';x.textAlign='left';
+  x.font='bold 42px '+F;x.fillText('房租水电费账单',286,104);
+  x.font='22px '+F;x.globalAlpha=.96;
+  x.fillText(getPropName(r)+' · '+r.name+' · '+(r.tenant||'租户')+' · '+monthLabel(m),286,158);
+  x.globalAlpha=1;
+  // 白卡
+  const cx=44,cy=266,cw=W-88,ch=396;x.fillStyle='#ffffff';bi_roundRect(x,cx,cy,cw,ch,18);x.fill();
+  x.strokeStyle='#e7edf3';x.lineWidth=1;bi_roundRect(x,cx,cy,cw,ch,18);x.stroke();
+  // 明细行
+  const items=[['月租',fmt(r.rent)],['管理费',fmt(r.mgmtFee)]];
+  if(reading&&reading.waterStart!=null&&reading.waterEnd!=null)items.push(['水费',fmt(b.wC)+' 吨 × '+fmt(r.waterPrice)+' = '+fmt(b.wCost)]);
+  if(reading&&reading.elecStart!=null&&reading.elecEnd!=null)items.push(['电费',fmt(b.eC)+' 度 × '+fmt(r.elecPrice)+' = '+fmt(b.eCost)]);
+  if(reading&&reading.gasStart!=null&&reading.gasEnd!=null)items.push(['燃气费',fmt(b.gC)+' 方 × '+fmt(r.gasPrice)+' = '+fmt(b.gCost)]);
+  if(reading&&reading.hotStart!=null&&reading.hotEnd!=null)items.push(['热水费',fmt(b.hC)+' 吨 × '+fmt(r.hotPrice)+' = '+fmt(b.hotCost)]);
+  let y=312;const lx=cx+34,rx=cx+cw-34,rh=47;
+  x.textBaseline='middle';
+  items.forEach(function(it,i){
+    x.textAlign='left';x.font='24px '+F;x.fillStyle='#3a4252';x.fillText(it[0],lx,y);
+    x.textAlign='right';x.font='bold 25px '+F;x.fillStyle='#1f2733';x.fillText('¥'+it[1],rx,y);
+    if(i<items.length-1){x.strokeStyle='#f0f2f6';x.lineWidth=1;x.beginPath();x.moveTo(lx,y+rh/2);x.lineTo(rx,y+rh/2);x.stroke();}
+    y+=rh;
+  });
+  // 合计
+  y+=8;const ty=y;
+  x.fillStyle='#e9f9f0';bi_roundRect(x,lx-14,ty-26,cw-40,58,12);x.fill();
+  x.textAlign='left';x.font='bold 24px '+F;x.fillStyle='#06a050';x.fillText('本月应交租金合计',lx,ty);
+  x.textAlign='right';x.font='bold 34px '+F;x.fillStyle='#06a050';x.fillText('¥'+fmt(b.total),rx,ty);
+  // 备注
+  x.textAlign='left';x.font='18px '+F;x.fillStyle='#7a8494';
+  x.fillText(reading?'请于每月约定日前支付，转入后请截图留存，谢谢配合！':'本月账单尚在核算中，稍后更新。',lx,cy+ch-26);
+  // 页脚
+  x.textAlign='center';x.font='15px '+F;x.fillStyle='#aab2c0';
+  x.fillText('本账单由房东通过「房租水电管理」生成',W/2,H-26);
+  // 导出 PNG
+  c.toBlob(function(blob){
+    if(!blob){toast('当前浏览器不支持生成图片');return;}
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='账单_'+getPropName(r)+'_'+r.name+'_'+m+'.png';a.click();toast('账单图片已下载');
+  },'image/png');
+}
 function copyText(enc){const text=decodeURIComponent(enc);const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();
   try{document.execCommand("copy");toast("已复制到剪贴板");}catch(e){toast("复制失败，请手动选择");}document.body.removeChild(ta);}
 
