@@ -97,6 +97,7 @@
   .hint{font-size:14px;color:var(--ink2);background:#f9f6ef;border:1px solid #e8e0d0;border-radius:12px;padding:10px 12px;margin-top:10px;line-height:1.7}
   .banner{background:#f9f1d8;border:1px solid #e8d8b0;border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:15px;line-height:1.8}
   .banner b{color:var(--warn)}
+  .card.alert{border-color:var(--danger);background:#fff8f5;box-shadow:0 0 0 4px rgba(192,72,59,.08)}
   .tag-ok{color:var(--ok);font-weight:700}
   .tag-warn{color:var(--warn);font-weight:700}
   .prop-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:#faf8f3;border:1px solid var(--line);border-radius:14px;cursor:pointer;font-weight:800;font-size:17px;margin-bottom:10px}
@@ -1059,8 +1060,28 @@ function runStats(){
 }
 
 /* ---------- 数据备份 ---------- */
+function dataStats(){
+  const propCount=state.properties.length;
+  const roomCount=state.rooms.length;
+  const readCount=state.readings.length;
+  const orphanRooms=state.rooms.filter(r=>!state.properties.some(p=>p.id===r.propertyId)).length;
+  return {propCount,roomCount,readCount,orphanRooms};
+}
 function renderData(){
+  const st=dataStats();
+  const warn=st.propCount>0&&st.roomCount===0?'alert':'';
   $("contentInner").innerHTML=`<div class="topbar">💾 数据备份</div>
+  <div class="card ${warn}">
+    <h2>本地数据诊断</h2>
+    <div class="summary">
+      <div class="stat"><div class="k">房源</div><div class="v">${st.propCount} 个</div></div>
+      <div class="stat"><div class="k">房间</div><div class="v">${st.roomCount} 间</div></div>
+      <div class="stat"><div class="k">抄表记录</div><div class="v">${st.readCount} 条</div></div>
+      <div class="stat"><div class="k">当前来源</div><div class="v" style="font-size:15px;word-break:break-all">${location.hostname}</div></div>
+    </div>
+    ${st.orphanRooms?`<div class="banner"><b>发现 ${st.orphanRooms} 间房间的房源ID已失效</b>，可能是数据损坏，建议从备份导入或开启云同步。</div>`:''}
+    ${st.propCount>0&&st.roomCount===0?`<div class="banner"><b>有房源但房间数为 0</b><br>浏览器 localStorage 是按网址分开保存的。如果你之前在别的网址（如临时预览链接）录入过数据，请回到原网址导出 JSON 备份，再在本页导入。</div>`:''}
+  </div>
   <div class="card"><h2>数据备份与恢复</h2>
     <p class="muted">数据保存在本机浏览器（localStorage）。建议每月导出一份 JSON 备份，换电脑/清缓存前务必导出。</p>
     <div class="row-actions">
@@ -1068,14 +1089,22 @@ function renderData(){
       <button class="btn-line" onclick="$('data_file').click()">导入 JSON</button>
       <button class="btn-line" onclick="dataSample()">填充示例数据</button>
       <button class="btn-danger" onclick="dataClear()">清空全部数据</button>
-    </div><input type="file" id="data_file" accept="application/json" style="display:none"></div>`;
+    </div>
+    <div style="margin-top:10px"><label>或粘贴 JSON 文本直接恢复</label><textarea id="data_paste" rows="4" placeholder="把 JSON 备份内容完整粘贴到这里"></textarea></div>
+    <div class="row-actions"><button class="btn-line" onclick="dataPasteImport()">从粘贴文本导入</button></div>
+    <input type="file" id="data_file" accept="application/json" style="display:none">
+  </div>`;
   $("data_file").onchange=e=>{
     const f=e.target.files[0];if(!f)return;const fr=new FileReader();
-    fr.onload=()=>{try{const s=JSON.parse(fr.result);if(!s.rooms)throw 0;
-      if(!confirm("导入将覆盖当前数据，确定？"))return;state=s;save();showView('roomList');toast("导入成功");}
-      catch(err){toast("文件格式不正确");}};fr.readAsText(f);
+    fr.onload=()=>{dataImportJSON(fr.result);};fr.readAsText(f);
   };
 }
+function dataImportJSON(text){
+  try{const s=JSON.parse(text);if(!s.rooms)throw 0;
+    if(!confirm("导入将覆盖当前数据，确定？"))return;state=s;normalizePropDefaults(state);save();showView('roomList');toast("导入成功");}
+  catch(err){toast("文件格式不正确");}
+}
+function dataPasteImport(){const t=$("data_paste").value.trim();if(!t){toast("请粘贴 JSON");return;}dataImportJSON(t);}
 function dataExport(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="房租水电备份_"+curMonth()+".json";a.click();toast("已导出");}
 function dataClear(){if(!confirm("确定清空全部数据？此操作不可恢复（请先导出备份）。"))return;
