@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>房租水电管理</title>
 <style>
   :root{
@@ -20,13 +20,26 @@
   }
   .app{display:flex;min-height:100vh}
   /* 顶部常驻菜单按钮 */
-  /* 底部固定 tab 导航 */
-  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:120;display:flex;background:rgba(255,255,255,.96);
-    -webkit-backdrop-filter:saturate(160%) blur(8px);backdrop-filter:saturate(160%) blur(8px);border-top:1px solid var(--line);
-    box-shadow:0 -4px 18px rgba(43,58,43,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
-  .bottom-nav .tab{flex:1;background:none;border:none;border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sub);cursor:pointer}
+  /* 底部固定 tab 导航（兼容 iOS 安全区+微信 WebView） */
+  .bottom-nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:120;display:flex;
+    background:rgba(255,255,255,.98);
+    -webkit-backdrop-filter:saturate(160%) blur(8px);backdrop-filter:saturate(160%) blur(8px);
+    border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(43,58,43,.08);
+    box-sizing:border-box;
+    /* 优先 env，再 fallback 到 constant（旧 iOS）和固定值 */
+    padding:8px 4px 8px;
+    padding-bottom:calc(8px + constant(safe-area-inset-bottom));
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+    min-height:70px;
+    min-height:calc(70px + env(safe-area-inset-bottom));
+    /* 强制硬件加速，防止 iOS 滚动时固定元素闪烁/被裁剪 */
+    -webkit-transform:translateZ(0);transform:translateZ(0);
+    will-change:transform;
+  }
+  .bottom-nav .tab{flex:1;background:none;border:none;border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sub);cursor:pointer;-webkit-tap-highlight-color:transparent}
   .bottom-nav .tab .ti{font-size:24px;line-height:1}
-  .bottom-nav .tab .tl{font-size:13px;font-weight:700}
+  .bottom-nav .tab .tl{font-size:13px;font-weight:700;white-space:nowrap}
   .bottom-nav .tab.active{color:var(--brand-d);background:var(--brand-soft)}
   .bottom-nav .tab:active{transform:translateY(1px)}
   /* 二级菜单底部弹层 */
@@ -42,8 +55,8 @@
   .tab-item{display:block;width:100%;text-align:center;padding:18px 12px;border-radius:16px;background:var(--gold-soft);border:1px solid #eaddcc;color:var(--ink2);font-size:17px;font-weight:800;cursor:pointer}
   .tab-item:hover{background:#ede4d3}
   .tab-item.active{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;border-color:var(--brand)}
-  /* 内容区 */
-  .content{flex:1;padding:18px;min-width:0;padding-bottom:96px}
+  /* 内容区：底部留白必须覆盖导航栏+安全区，防止被遮挡 */
+  .content{flex:1;padding:18px;min-width:0;padding-bottom:96px;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
   .topbar{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin-bottom:16px;font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(43,58,43,.05)}
   .topbar .ico{font-size:22px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 3px 10px rgba(43,58,43,.06)}
@@ -277,6 +290,16 @@ function showView(v){
 }
 // ESC 关闭底部弹层
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTabSheet();});
+
+/* iOS/微信 WebView 底部固定导航稳定性修复：视口变化时强制重绘，防止工具栏遮挡 */
+function fixBottomNav(){
+  const nav=$('bottomNav'); if(!nav) return;
+  const d=nav.style.display; nav.style.display='none'; nav.offsetHeight; nav.style.display=(d||'flex');
+}
+let _resizeTimer=null;
+window.addEventListener('resize',()=>{clearTimeout(_resizeTimer); _resizeTimer=setTimeout(fixBottomNav,80);});
+window.addEventListener('orientationchange',()=>setTimeout(fixBottomNav,200));
+if(window.visualViewport){window.visualViewport.addEventListener('resize',fixBottomNav);}
 
 /* ---------- 添加房源 ---------- */
 function renderAddProperty(){
