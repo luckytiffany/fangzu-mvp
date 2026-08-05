@@ -86,12 +86,27 @@
   .bp-trend-head h3{margin:0}
   .bp-period-sel{font-size:13px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink2);max-width:48%}
   label{display:block;font-size:15px;color:var(--sub);margin:10px 0 5px;font-weight:600}
-  input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff;color:var(--ink)}
+  input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff;color:var(--ink);box-sizing:border-box}
+  input[type="date"]{-webkit-appearance:none;appearance:none}
+  .bp-date-field{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff;color:var(--ink);box-sizing:border-box;min-height:44px;display:flex;align-items:center;cursor:pointer;position:relative}
+  .bp-date-field::after{content:"▼";position:absolute;right:12px;top:50%;transform:translateY(-50%) scaleX(.85);font-size:12px;color:var(--sub);pointer-events:none}
+  .bp-date-field span{flex:1}
   input:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px var(--brand-soft)}
   input:disabled,select:disabled{background:#efece4;color:#8a948a;cursor:not-allowed}
   button:disabled{opacity:.55;cursor:not-allowed}
   .grid{display:grid;gap:12px}
   .g2{grid-template-columns:1fr 1fr}
+  .picker-mask{position:fixed;inset:0;background:rgba(40,46,40,.45);z-index:300;display:flex;align-items:flex-end;justify-content:center;transition:opacity .18s;opacity:0}
+  .picker-mask.open{opacity:1}
+  .picker-panel{width:100%;max-width:520px;background:var(--card);border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(20,30,20,.22);transform:translateY(100%);transition:transform .22s ease-out}
+  .picker-mask.open .picker-panel{transform:translateY(0)}
+  .picker-title{text-align:center;font-weight:700;font-size:17px;color:var(--ink2);margin-bottom:14px}
+  .picker-wheels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;height:210px;position:relative;margin-bottom:16px}
+  .picker-wheels::before{content:"";position:absolute;top:50%;left:0;right:0;height:42px;transform:translateY(-50%);background:var(--brand-soft);border-radius:10px;z-index:0;pointer-events:none}
+  .wheel{height:210px;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;position:relative;z-index:1;mask-image:linear-gradient(to bottom,transparent 0,#000 36px,#000 174px,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 36px,#000 174px,transparent 100%)}
+  .wheel-items{padding:84px 0}
+  .wheel-item{height:42px;line-height:42px;text-align:center;font-size:16px;color:var(--sub);scroll-snap-align:center}
+  .wheel-item.active{color:var(--ink2);font-weight:700}
   .g3{grid-template-columns:1fr 1fr 1fr}
   .g4{grid-template-columns:1fr 1fr 1fr 1fr}
   @media(max-width:760px){.g3,.g4{grid-template-columns:1fr 1fr}}
@@ -199,6 +214,20 @@
   </div>
 </div>
 <div class="modal-mask" id="modalMask"><div class="modal-box" id="modalBox"></div></div>
+<div class="picker-mask" id="bpDatePickerMask" style="display:none" onclick="if(event.target===this)closeBPDatePicker()">
+  <div class="picker-panel" id="bpDatePickerPanel">
+    <div class="picker-title">选择日期</div>
+    <div class="picker-wheels">
+      <div class="wheel" id="wheelYear"><div class="wheel-items" id="wheelYearItems"></div></div>
+      <div class="wheel" id="wheelMonth"><div class="wheel-items" id="wheelMonthItems"></div></div>
+      <div class="wheel" id="wheelDay"><div class="wheel-items" id="wheelDayItems"></div></div>
+    </div>
+    <div class="picker-actions">
+      <button class="btn-line" onclick="closeBPDatePicker()">取消</button>
+      <button class="btn-primary" onclick="confirmBPDatePicker()">确定</button>
+    </div>
+  </div>
+</div>
 <div id="authScreen">
   <div class="auth-card">
     <div class="brand"><span class="logo">🏠</span>房租水电管理<small>房东好帮手</small></div>
@@ -1198,12 +1227,14 @@ function openBPModal(id){
   let rec=null,title="新增血压记录";
   if(id){rec=(state.bp||[]).find(x=>x.id===id);if(!rec){toast("记录不存在");return;}title="编辑血压记录";}
   const dateVal=rec?rec.date.replace(/\//g,"-"):d;
+  const dateDisplay=dateVal.replace(/-/g,"/");
   const high=rec?rec.high:"",low=rec?rec.low:"",hr=rec&&rec.hr!=null?rec.hr:"";
   const periodOpts=['起床','上午','中午','晚上'].map(p=>`<option value="${p}" ${rec&&rec.period===p?'selected':''}>${p}</option>`).join("");
   $("modalBox").innerHTML=`<button class="modal-close" onclick="closeModal()">×</button>
     <h2>${title}</h2>
     <div class="grid g2">
-      <div><label>日期 *</label><input id="bp_date" type="date" value="${dateVal}"></div>
+      <div><label>日期 *</label><input id="bp_date" type="hidden" value="${dateVal}">
+        <div class="bp-date-field" id="bp_date_field" onclick="openBPDatePicker('bp_date','bp_date_field')">${dateDisplay}</div></div>
       <div><label>测量时段</label><select id="bp_period">${periodOpts}</select></div>
     </div>
     <div class="grid g2">
@@ -1246,6 +1277,61 @@ function deleteBP(id){
   if(!confirm("确定删除这条血压记录吗？"))return;
   state.bp=(state.bp||[]).filter(x=>x.id!==id);
   save();renderBP();toast("已删除");
+}
+let bpPickerTargetInput=null,bpPickerTargetDisplay=null;
+function openBPDatePicker(inputId,displayId){
+  bpPickerTargetInput=inputId;bpPickerTargetDisplay=displayId;
+  const val=$(inputId).value||new Date().toISOString().slice(0,10);
+  const [y,m,d]=val.split('-').map(Number);
+  buildWheel('wheelYearItems',1980,2050,y);
+  buildWheel('wheelMonthItems',1,12,m);
+  buildWheel('wheelDayItems',1,31,d);
+  const mask=$("bpDatePickerMask"); mask.style.display='flex';
+  setTimeout(()=>{mask.classList.add('open');scrollToSelected('wheelYearItems');scrollToSelected('wheelMonthItems');scrollToSelected('wheelDayItems');},10);
+}
+function buildWheel(containerId,start,end,selected){
+  let html='';
+  for(let i=start;i<=end;i++){
+    html+=`<div class="wheel-item${i===selected?' active':''}" data-val="${i}" onclick="wheelTap(this)">${String(i).padStart(2,'0')}</div>`;
+  }
+  $(containerId).innerHTML=html;
+}
+function scrollToSelected(containerId){
+  const c=$(containerId); if(!c)return;
+  const item=c.querySelector('.active')||c.firstElementChild;
+  if(item){item.scrollIntoView({block:'center',behavior:'auto'});}
+}
+function wheelTap(el){
+  const parent=el.parentElement;
+  parent.querySelectorAll('.wheel-item').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  el.scrollIntoView({block:'center',behavior:'smooth'});
+}
+function getWheelVal(containerId){
+  const c=$(containerId); if(!c)return null;
+  const items=Array.from(c.querySelectorAll('.wheel-item'));
+  // 找距离视口中心最近的元素
+  const parent=c.parentElement;
+  const center=parent.getBoundingClientRect().top+parent.clientHeight/2;
+  let best=null,bestDist=Infinity;
+  items.forEach(it=>{
+    const d=Math.abs(it.getBoundingClientRect().top+it.clientHeight/2-center);
+    if(d<bestDist){bestDist=d;best=it;}
+  });
+  return best?Number(best.dataset.val):null;
+}
+function closeBPDatePicker(){
+  const mask=$("bpDatePickerMask"); mask.classList.remove('open');
+  setTimeout(()=>{mask.style.display='none';},220);
+}
+function confirmBPDatePicker(){
+  let y=getWheelVal('wheelYearItems');let m=getWheelVal('wheelMonthItems');let d=getWheelVal('wheelDayItems');
+  if(y==null||m==null||d==null){toast("请选择完整日期");return;}
+  const maxDay=new Date(y,m,0).getDate(); if(d>maxDay)d=maxDay;
+  const dateStr=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  if(bpPickerTargetInput){$(bpPickerTargetInput).value=dateStr;}
+  if(bpPickerTargetDisplay){$(bpPickerTargetDisplay).textContent=dateStr.replace(/-/g,'/');}
+  closeBPDatePicker();
 }
 function exportBP(){
   const list=(state.bp||[]).slice().sort((a,b)=>(b.date+a.time).localeCompare(a.date+a.time));
