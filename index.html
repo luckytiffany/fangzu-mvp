@@ -1129,7 +1129,7 @@ function runStats(){
     <tbody>${rows}
     <tr style="background:var(--brand-soft)"><td colspan="9" style="text-align:right;font-weight:800;color:var(--brand-d)">合计（${rooms.length} 间）</td><td class="amt" style="font-weight:800;color:var(--brand-d)">¥${fmt(sub)}</td></tr>
     </tbody></table>
-    <div class="row-actions"><button class="btn-gold" onclick="exportStatsPDF('${pid}','${m}')">导出报表（PDF）</button></div>`;
+    <div class="row-actions"><button class="btn-gold" onclick="exportStatsPDF('${pid}','${m}')">导出报表（图片）</button></div>`;
 }
 function runSummary(){
   const pid=$("ss_prop").value,from=$("ss_from").value,to=$("ss_to").value;
@@ -1158,7 +1158,7 @@ function runSummary(){
     <tbody>${rows}
     <tr style="background:var(--brand-soft)"><td colspan="7" style="text-align:right;font-weight:800;color:var(--brand-d)">${months.length} 个月合计</td><td class="amt" style="font-weight:800;color:var(--brand-d)">¥${fmt(grand)}</td></tr>
     </tbody></table>
-    <div class="row-actions"><button class="btn-gold" onclick="exportSummaryPDF('${pid}','${from}','${to}')">导出报表（PDF）</button></div>`;
+    <div class="row-actions"><button class="btn-gold" onclick="exportSummaryPDF('${pid}','${from}','${to}')">导出报表（图片）</button></div>`;
 }
 function statsPrintHead(title,sub){
   return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${title}</title>
@@ -1173,30 +1173,68 @@ function statsPrintHead(title,sub){
    .ft{text-align:center;color:#9aa3af;font-size:15px;margin-top:22px}
   </style></head><body><h1>${title}</h1><div class="sub">${sub}</div>`;
 }
-function openPrint(html){
-  // 用隐藏 iframe 打印，规避弹出窗口被拦截导致“无反应/空白页”
-  const frame=document.createElement("iframe");
-  frame.setAttribute("aria-hidden","true");
-  frame.style.cssText="position:absolute;left:-10000px;top:0;width:800px;height:1000px;border:0;";
-  document.body.appendChild(frame);
-  const fw=frame.contentWindow, fdoc=fw.document;
-  let done=false;
-  function doPrint(){ if(done)return; done=true; try{ fw.focus(); fw.print(); }catch(e){ console.error("print error",e); toast("打印失败，请重试"); } }
-  fw.onafterprint=function(){ setTimeout(function(){ if(frame.parentNode) frame.parentNode.removeChild(frame); },100); };
-  fw.onload=function(){ setTimeout(doPrint,250); };
-  fdoc.open();
-  fdoc.write(html+'</body></html>');
-  fdoc.close();
-  // 兜底：部分浏览器 onload 不触发时仍尝试打印
-  setTimeout(function(){ if(fdoc.readyState==="complete") doPrint(); },700);
+function reportImageModal(title, sub, headers, rows, footer, fileName){
+  const W=1080, pad=44;
+  const titleH=110, subH=46, headerH=64, rowH=66, footerH=84, gap=18;
+  const n=headers.length;
+  const tableW=W-pad*2;
+  const weights=headers.map((h,i)=> i===n-1?1.5:1);
+  const wsum=weights.reduce((a,b)=>a+b,0);
+  const colW=weights.map(w=>Math.floor(tableW*w/wsum));
+  let used=colW.reduce((a,b)=>a+b,0); colW[n-1]+=tableW-used;
+  const H=pad*2+titleH+subH+headerH+rows.length*rowH+footerH+gap+30;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#5d8c5d'; ctx.fillRect(0,0,W,10);
+  ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.fillStyle='#1f2733'; ctx.font='bold 46px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(title, W/2, pad+titleH/2);
+  ctx.fillStyle='#6b7785'; ctx.font='26px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(sub, W/2, pad+titleH+subH/2);
+  const hy=pad+titleH+subH;
+  ctx.fillStyle='#eef4ec'; ctx.fillRect(pad,hy,tableW,headerH);
+  ctx.fillStyle='#3d6a3d'; ctx.font='bold 28px "PingFang SC","Microsoft YaHei",sans-serif';
+  let x=pad; headers.forEach((h,i)=>{ ctx.fillText(h, x+colW[i]/2, hy+headerH/2); x+=colW[i]; });
+  let y=hy+headerH;
+  rows.forEach((row,ri)=>{
+    if(ri%2===1){ ctx.fillStyle='#f7faf6'; ctx.fillRect(pad,y,tableW,rowH); }
+    x=pad;
+    row.forEach((cell,i)=>{
+      const isLast=i===n-1;
+      ctx.fillStyle=isLast?'#3d6a3d':'#1f2733';
+      ctx.font=(isLast?'bold ':'')+'26px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText(String(cell), x+colW[i]/2, y+rowH/2);
+      x+=colW[i];
+    });
+    y+=rowH;
+  });
+  ctx.strokeStyle='#d8dde4'; ctx.lineWidth=1; ctx.beginPath();
+  x=pad; for(let i=0;i<=n;i++){ ctx.moveTo(x,hy); ctx.lineTo(x,y); x+=colW[i]||0; }
+  ctx.moveTo(pad,hy); ctx.lineTo(pad+tableW,hy); ctx.moveTo(pad,y); ctx.lineTo(pad+tableW,y); ctx.stroke();
+  const fy=y+gap;
+  ctx.fillStyle='#eef4ec'; ctx.fillRect(pad,fy,tableW,footerH);
+  ctx.fillStyle='#3d6a3d'; ctx.font='bold 30px "PingFang SC","Microsoft YaHei",sans-serif';
+  if(footer.length===2){ ctx.textAlign='center'; ctx.fillText(footer[0], pad+colW[0]/2+30, fy+footerH/2); ctx.fillText(footer[1], pad+tableW-colW[n-1]/2, fy+footerH/2); }
+  else { ctx.textAlign='left'; ctx.fillText(footer.join(' '), pad+16, fy+footerH/2); }
+  ctx.fillStyle='#9aa3af'; ctx.font='22px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center'; ctx.fillText('本报表由房东通过「房租水电管理」生成', W/2, fy+footerH+26);
+  const url=c.toDataURL('image/png');
+  const wrap=document.createElement('div'); wrap.style.marginTop='14px';
+  wrap.innerHTML=`<p class="muted" style="text-align:center;font-size:14px;color:#5d8c5d">微信内请<b>长按图片 → 保存到相册</b>；其他浏览器点右侧按钮下载</p>
+    <div style="text-align:center;overflow:auto"><img src="${url}" style="max-width:100%;border:1px solid #e3e3e3;border-radius:10px;margin-top:6px"></div>
+    <div class="row-actions" style="justify-content:center"><a class="btn-gold" href="${url}" download="${fileName}.png">下载图片</a></div>`;
+  $("modalResult").appendChild(wrap);
+  setTimeout(()=>{ const box=$("modalBox"); if(box){ box.scrollTop=box.scrollHeight; } },50);
 }
 function exportStatsPDF(pid,m){
-  const p=getProp(pid);if(!p)return;const {rows,sub,rooms}=statsRowsHTML(pid,m);
-  const html=statsPrintHead(p.name+' 月度统计报表',monthLabel(m)+' · 共 '+rooms.length+' 间房')+
-    `<table><thead><tr><th>房源名称</th><th>月度</th><th>房间号</th><th>租金</th><th>管理费</th><th>水费</th><th>电费</th><th>燃气费</th><th>热水费</th><th>小计</th></tr></thead>
-    <tbody>${rows}<tr class="tot"><td colspan="9" style="text-align:right">合计</td><td>¥${fmt(sub)}</td></tr></tbody></table>
-    <div class="ft">本报表由房东通过「房租水电管理」生成</div>`;
-  openPrint(html);
+  const p=getProp(pid);if(!p)return;const {sub,rooms}=statsRowsHTML(pid,m);
+  const headers=['房间号','租金','管理费','水费','电费','燃气费','热水费','小计'];
+  const rows=rooms.map(r=>{const reading=getReading(r.id,m);const b=computeBill(r,reading);
+    return [r.name,'¥'+fmt(r.rent),'¥'+fmt(r.mgmtFee),reading?'¥'+fmt(b.wCost):'-',reading?'¥'+fmt(b.eCost):'-',reading?'¥'+fmt(b.gCost):'-',reading?'¥'+fmt(b.hotCost):'-','¥'+fmt(b.total)];});
+  if(!rows.length)rows=[['（暂无房间）','','','','','','','']];
+  reportImageModal(p.name+' 月度统计报表', monthLabel(m)+' · 共 '+rooms.length+' 间房', headers, rows, ['合计','¥'+fmt(sub)], '月度统计报表_'+p.name+'_'+m);
 }
 function exportSummaryPDF(pid,from,to){
   const p=getProp(pid);if(!p)return;
@@ -1204,17 +1242,14 @@ function exportSummaryPDF(pid,from,to){
   let cur=new Date(fy,fm-1,1),end=new Date(ty,tm-1,1);
   while(cur<=end){months.push(cur.getFullYear()+"-"+String(cur.getMonth()+1).padStart(2,"0"));cur.setMonth(cur.getMonth()+1);}
   const rooms=state.rooms.filter(r=>r.propertyId===pid);
-  let rows="",grand=0;
+  let rows=[],grand=0;
   months.forEach(m=>{let mR=0,mM=0,mW=0,mE=0,mG=0,mH=0,mSub=0;
     rooms.forEach(r=>{const reading=getReading(r.id,m);const b=computeBill(r,reading);
       mR+=r.rent;mM+=r.mgmtFee;mW+=reading?b.wCost:0;mE+=reading?b.eCost:0;mG+=reading?b.gCost:0;mH+=reading?b.hotCost:0;mSub+=b.total;});
     grand+=mSub;
-    rows+=`<tr><td>${monthLabel(m)}</td><td>¥${fmt(mR)}</td><td>¥${fmt(mM)}</td><td>¥${fmt(mW)}</td><td>¥${fmt(mE)}</td><td>¥${fmt(mG)}</td><td>¥${fmt(mH)}</td><td>¥${fmt(mSub)}</td></tr>`;});
-  const html=statsPrintHead(p.name+' 统计汇总报表',monthLabel(from)+' 至 '+monthLabel(to)+' · 共 '+rooms.length+' 间房')+
-    `<table><thead><tr><th>月度</th><th>租金合计</th><th>管理费合计</th><th>水费合计</th><th>电费合计</th><th>燃气费合计</th><th>热水费合计</th><th>小计</th></tr></thead>
-    <tbody>${rows}<tr class="tot"><td colspan="7" style="text-align:right">${months.length} 个月合计</td><td>¥${fmt(grand)}</td></tr></tbody></table>
-    <div class="ft">本报表由房东通过「房租水电管理」生成</div>`;
-  openPrint(html);
+    rows.push([monthLabel(m),'¥'+fmt(mR),'¥'+fmt(mM),'¥'+fmt(mW),'¥'+fmt(mE),'¥'+fmt(mG),'¥'+fmt(mH),'¥'+fmt(mSub)]);});
+  if(!rows.length)rows=[['（暂无数据）','','','','','','','']];
+  reportImageModal(p.name+' 统计汇总报表', monthLabel(from)+' 至 '+monthLabel(to)+' · 共 '+rooms.length+' 间房', ['月度','租金合计','管理费合计','水费合计','电费合计','燃气费合计','热水费合计','小计'], rows, [months.length+' 个月合计','¥'+fmt(grand)], '统计汇总报表_'+p.name+'_'+from+'_'+to);
 }
 
 /* ---------- 数据备份 ---------- */
