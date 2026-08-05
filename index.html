@@ -236,12 +236,12 @@ function load(){
         const pid=uid();s.properties=[{id:pid,name:'默认楼栋',location:''}];
         s.rooms.forEach(r=>r.propertyId=pid);
       }
-      s.rooms=s.rooms||[];s.readings=s.readings||[];
+      s.rooms=s.rooms||[];s.readings=s.readings||[];s.bp=s.bp||[];
       normalizePropDefaults(s);
       return s;
     }
   }catch(e){}
-  return {properties:[],propDefaults:{},rooms:[],readings:[]};
+  return {properties:[],propDefaults:{},rooms:[],readings:[],bp:[]};
 }
 function normalizePropDefaults(s){
   s.propDefaults=s.propDefaults||{};
@@ -282,7 +282,8 @@ const NAV_GROUPS={
     {v:'cloud',l:'云同步'}
   ]},
   g4:{title:'个人中心', children:[
-    {v:'stats',l:'数据统计'}
+    {v:'stats',l:'数据统计'},
+    {v:'bp',l:'血压管理'}
   ]}
 };
 let currentView='addProperty';
@@ -328,7 +329,7 @@ function showView(v){
   highlightTab();
   const fn={addProperty:renderAddProperty,addRoom:renderAddRoom,defaultFees:renderDefaultFees,
     roomList:renderRoomList,reading:renderReading,bill:renderBill,history:renderHistoryBill,
-    data:renderData,cloud:renderCloud,auth:renderAuthManage,stats:renderStats}[v];
+    data:renderData,cloud:renderCloud,auth:renderAuthManage,stats:renderStats,bp:renderBP}[v];
   if(fn)fn();
   window.scrollTo(0,0);
 }
@@ -1143,6 +1144,85 @@ function renderStats(){
           <div class="d">按「房源 + 时间范围（起止年月）」汇总多月数据</div></div>
       </div>
     </div>`;
+}
+/* ---------- 血压管理（个人健康记录） ---------- */
+function renderBP(){
+  const list=(state.bp||[]).slice().sort((a,b)=>(b.date+a.time).localeCompare(a.date+a.time));
+  let body;
+  if(!list.length){
+    body=`<div class="empty">还没有血压记录，点击上方「血压记录」开始记录吧</div>`;
+  }else{
+    const rows=list.map((r,i)=>`<tr>
+      <td>${i+1}</td>
+      <td>${escapeHtml(r.date)}</td>
+      <td>${escapeHtml(r.time)}</td>
+      <td>${escapeHtml(r.high)}</td>
+      <td>${escapeHtml(r.low)}</td>
+      <td>${r.hr==null?"—":escapeHtml(r.hr)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-line" style="padding:6px 10px;font-size:13px" onclick="openBPModal('${r.id}')">编辑</button>
+        <button class="btn-danger" style="padding:6px 10px;font-size:13px" onclick="deleteBP('${r.id}')">删除</button>
+      </td>
+    </tr>`).join("");
+    body=`<div style="overflow:auto"><table class="bill-detail-table">
+      <thead><tr><th>序号</th><th>日期</th><th>时间</th><th>高压</th><th>低压</th><th>心率</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
+  $("contentInner").innerHTML=`<div class="topbar">❤️ 血压管理</div>
+    <div class="card">
+      <div class="row-actions"><button class="btn-primary" style="flex:1" onclick="openBPModal()">＋ 血压记录</button></div>
+      <p class="muted" style="margin-top:10px">记录每日血压与心率，数据自动保存到本机并随云同步。</p>
+    </div>
+    <div class="card"><h3>血压记录列表</h3>${body}</div>`;
+}
+function openBPModal(id){
+  const today=new Date();
+  const d=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  let rec=null,title="新增血压记录";
+  if(id){rec=(state.bp||[]).find(x=>x.id===id);if(!rec){toast("记录不存在");return;}title="编辑血压记录";}
+  const dateVal=rec?rec.date.replace(/\//g,"-"):d;
+  const high=rec?rec.high:"",low=rec?rec.low:"",hr=rec&&rec.hr!=null?rec.hr:"";
+  $("modalBox").innerHTML=`<button class="modal-close" onclick="closeModal()">×</button>
+    <h2>${title}</h2>
+    <div class="grid g2">
+      <div><label>日期 *</label><input id="bp_date" type="date" value="${dateVal}"></div>
+      <div><label>心率（次/分）</label><input id="bp_hr" type="number" inputmode="numeric" placeholder="如 72" value="${hr}"></div>
+    </div>
+    <div class="grid g2">
+      <div><label>高压（mmHg）*</label><input id="bp_high" type="number" inputmode="numeric" placeholder="如 120" value="${high}"></div>
+      <div><label>低压（mmHg）*</label><input id="bp_low" type="number" inputmode="numeric" placeholder="如 80" value="${low}"></div>
+    </div>
+    <div class="hint">带 * 为必填。保存后「时间」自动记录为当前时间（格式 hh:mm）。</div>
+    <div class="row-actions"><button class="btn-primary" onclick="saveBP('${id||''}')">保存</button>
+      <button class="btn-line" onclick="closeModal()">取消</button></div>`;
+  $("modalMask").style.display='flex';
+  setTimeout(()=>{$("modalMask").classList.add('open');},10);
+}
+function saveBP(id){
+  const dateRaw=$("bp_date").value;
+  const high=parseFloat($("bp_high").value);
+  const low=parseFloat($("bp_low").value);
+  const hrRaw=$("bp_hr").value;
+  if(!dateRaw){toast("请选择日期");return;}
+  if(isNaN(high)||high<=0){toast("请填写有效的高压");return;}
+  if(isNaN(low)||low<=0){toast("请填写有效的低压");return;}
+  const hr=(hrRaw===""||isNaN(parseFloat(hrRaw)))?null:parseFloat(hrRaw);
+  const date=dateRaw.replace(/-/g,"/"); // 展示格式 yyyy/mm/dd
+  const now=new Date();
+  const time=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+  state.bp=state.bp||[];
+  if(id){
+    const r=state.bp.find(x=>x.id===id);
+    if(r){r.date=date;r.time=time;r.high=high;r.low=low;r.hr=hr;}
+  }else{
+    state.bp.push({id:uid(),date,time,high,low,hr});
+  }
+  save();closeModal();renderBP();toast(id?"已更新":"已保存");
+}
+function deleteBP(id){
+  if(!confirm("确定删除这条血压记录吗？"))return;
+  state.bp=(state.bp||[]).filter(x=>x.id!==id);
+  save();renderBP();toast("已删除");
 }
 function openStatsModal(kind){
   if(!state.properties.length){toast("请先添加房源");return;}
