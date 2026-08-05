@@ -82,6 +82,9 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 3px 10px rgba(43,58,43,.06)}
   .card h2{margin:0 0 14px;font-size:19px;color:var(--ink2)}
   .card h3{margin:0 0 10px;font-size:17px;color:var(--ink2)}
+  .bp-trend-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .bp-trend-head h3{margin:0}
+  .bp-period-sel{font-size:13px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink2);max-width:48%}
   label{display:block;font-size:15px;color:var(--sub);margin:10px 0 5px;font-weight:600}
   input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff;color:var(--ink)}
   input:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px var(--brand-soft)}
@@ -1147,8 +1150,11 @@ function renderStats(){
     </div>`;
 }
 /* ---------- 血压管理（个人健康记录） ---------- */
+let bpPeriodFilter='全部'; // 走势图测量时段筛选：全部/起床/上午/中午/晚上
 function renderBP(){
   const list=(state.bp||[]).slice().sort((a,b)=>(b.date+a.time).localeCompare(a.date+a.time));
+  const periodSel=[['全部','全部时段'],['起床','起床'],['上午','上午'],['中午','中午'],['晚上','晚上']];
+  const periodOpts=periodSel.map(p=>`<option value="${p[0]}" ${bpPeriodFilter===p[0]?'selected':''}>${p[1]}</option>`).join("");
   let body;
   if(!list.length){
     body=`<div class="empty">还没有血压记录，点击上方「血压记录」开始记录吧</div>`;
@@ -1156,6 +1162,7 @@ function renderBP(){
     const rows=list.map((r,i)=>`<tr>
       <td>${i+1}</td>
       <td>${escapeHtml(r.date)}</td>
+      <td>${r.period?escapeHtml(r.period):"—"}</td>
       <td>${escapeHtml(r.time)}</td>
       <td>${escapeHtml(r.high)}</td>
       <td>${escapeHtml(r.low)}</td>
@@ -1166,7 +1173,7 @@ function renderBP(){
       </td>
     </tr>`).join("");
     body=`<div style="overflow:auto"><table class="bill-detail-table">
-      <thead><tr><th>序号</th><th>日期</th><th>时间</th><th>高压</th><th>低压</th><th>心率</th><th>操作</th></tr></thead>
+      <thead><tr><th>序号</th><th>日期</th><th>测量时段</th><th>时间</th><th>高压</th><th>低压</th><th>心率</th><th>操作</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   }
   $("contentInner").innerHTML=`<div class="topbar">❤️ 血压管理</div>
@@ -1175,9 +1182,12 @@ function renderBP(){
         <button class="btn-gold" onclick="exportBP()">导出血压记录</button></div>
       <p class="muted" style="margin-top:10px">记录每日血压与心率，数据自动保存到本机并随云同步。</p>
     </div>
-    <div class="card"><h3>近 10 天血压走势</h3>
+    <div class="card"><div class="bp-trend-head"><h3>近 20 天血压走势</h3>
+      <select id="bpPeriodSel" class="bp-period-sel" onchange="bpPeriodFilter=this.value;drawBPTrend('bpTrend')">
+        ${periodOpts}
+      </select></div>
       <div style="overflow:auto"><canvas id="bpTrend" width="680" height="330" style="width:100%;height:auto;border:1px solid #eef1f3;border-radius:12px;display:block"></canvas></div>
-      <p class="muted" style="margin-top:8px;font-size:13px">红色=收缩压（高压） · 绿色=舒张压（低压） · 蓝色=心率；当天无记录则不连线。</p>
+      <p class="muted" style="margin-top:8px;font-size:13px">红色=收缩压（高压） · 绿色=舒张压（低压） · 蓝色=心率；当天无记录则不连线。可按右上角「测量时段」筛选。</p>
     </div>
     <div class="card"><h3>血压记录列表</h3>${body}</div>`;
   drawBPTrend('bpTrend');
@@ -1189,15 +1199,20 @@ function openBPModal(id){
   if(id){rec=(state.bp||[]).find(x=>x.id===id);if(!rec){toast("记录不存在");return;}title="编辑血压记录";}
   const dateVal=rec?rec.date.replace(/\//g,"-"):d;
   const high=rec?rec.high:"",low=rec?rec.low:"",hr=rec&&rec.hr!=null?rec.hr:"";
+  const periodOpts=['起床','上午','中午','晚上'].map(p=>`<option value="${p}" ${rec&&rec.period===p?'selected':''}>${p}</option>`).join("");
   $("modalBox").innerHTML=`<button class="modal-close" onclick="closeModal()">×</button>
     <h2>${title}</h2>
     <div class="grid g2">
       <div><label>日期 *</label><input id="bp_date" type="date" value="${dateVal}"></div>
-      <div><label>高压（mmHg）*</label><input id="bp_high" type="number" inputmode="numeric" placeholder="如 120" value="${high}"></div>
+      <div><label>测量时段</label><select id="bp_period">${periodOpts}</select></div>
     </div>
     <div class="grid g2">
+      <div><label>高压（mmHg）*</label><input id="bp_high" type="number" inputmode="numeric" placeholder="如 120" value="${high}"></div>
       <div><label>低压（mmHg）*</label><input id="bp_low" type="number" inputmode="numeric" placeholder="如 80" value="${low}"></div>
+    </div>
+    <div class="grid g2">
       <div><label>心率（次/分）</label><input id="bp_hr" type="number" inputmode="numeric" placeholder="如 72" value="${hr}"></div>
+      <div></div>
     </div>
     <div class="hint">带 * 为必填。保存后「时间」自动记录为当前时间（格式 hh:mm）。</div>
     <div class="row-actions"><button class="btn-primary" onclick="saveBP('${id||''}')">保存</button>
@@ -1207,6 +1222,7 @@ function openBPModal(id){
 }
 function saveBP(id){
   const dateRaw=$("bp_date").value;
+  const period=$("bp_period").value;
   const high=parseFloat($("bp_high").value);
   const low=parseFloat($("bp_low").value);
   const hrRaw=$("bp_hr").value;
@@ -1220,9 +1236,9 @@ function saveBP(id){
   state.bp=state.bp||[];
   if(id){
     const r=state.bp.find(x=>x.id===id);
-    if(r){r.date=date;r.time=time;r.high=high;r.low=low;r.hr=hr;}
+    if(r){r.date=date;r.time=time;r.period=period;r.high=high;r.low=low;r.hr=hr;}
   }else{
-    state.bp.push({id:uid(),date,time,high,low,hr});
+    state.bp.push({id:uid(),date,time,period,high,low,hr});
   }
   save();closeModal();renderBP();toast(id?"已更新":"已保存");
 }
@@ -1234,8 +1250,8 @@ function deleteBP(id){
 function exportBP(){
   const list=(state.bp||[]).slice().sort((a,b)=>(b.date+a.time).localeCompare(a.date+a.time));
   if(!list.length){toast("还没有血压记录，无法导出");return;}
-  const headers=['序号','日期','时间','高压','低压','心率'];
-  const rows=list.map((r,i)=>[i+1, r.date, r.time, r.high, r.low, r.hr==null?'—':r.hr]);
+  const headers=['序号','日期','测量时段','时间','高压','低压','心率'];
+  const rows=list.map((r,i)=>[i+1, r.date, r.period?r.period:'—', r.time, r.high, r.low, r.hr==null?'—':r.hr]);
   const now=new Date();
   const sub='共 '+list.length+' 条记录 · 生成于 '+now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   $("modalBox").innerHTML=`<button class="modal-close" onclick="closeModal()">×</button><h2>导出血压记录</h2>
@@ -1249,11 +1265,13 @@ function drawBPTrend(canvasId){
   const cv=document.getElementById(canvasId); if(!cv)return;
   const W=680,H=330; const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
-  // 近 10 天
+  // 近 20 天
   const days=[]; const now=new Date();
-  for(let i=9;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push(d);}
+  for(let i=19;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);days.push(d);}
   const labels=days.map(d=>(d.getMonth()+1)+'/'+d.getDate());
-  const map={}; (state.bp||[]).forEach(r=>{ (map[r.date]=map[r.date]||[]).push(r); });
+  // 按测量时段筛选
+  const recs=(state.bp||[]).filter(r=>bpPeriodFilter==='全部'||r.period===bpPeriodFilter);
+  const map={}; recs.forEach(r=>{ (map[r.date]=map[r.date]||[]).push(r); });
   const series={high:[],low:[],hr:[]};
   days.forEach(d=>{
     const key=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');
@@ -1270,7 +1288,7 @@ function drawBPTrend(canvasId){
   const plotW=W-padL-padR, plotH=H-padT-padB;
   const vals=[];
   series.high.concat(series.low).concat(series.hr.filter(v=>v!=null)).forEach(v=>{if(v!=null)vals.push(v);});
-  if(!vals.length){ctx.fillStyle='#6e7d6e';ctx.font='16px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('近 10 天暂无血压记录', W/2, H/2);return;}
+  if(!vals.length){ctx.fillStyle='#6e7d6e';ctx.font='16px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('近 20 天暂无血压记录', W/2, H/2);return;}
   let min=Math.min.apply(null,vals), max=Math.max.apply(null,vals);
   if(min===max){min-=10;max+=10;} else {const p=(max-min)*0.15; min=Math.floor(min-p); max=Math.ceil(max+p);}
   if(min<0)min=0;
