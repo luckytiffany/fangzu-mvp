@@ -144,11 +144,13 @@
         <button class="nav-head" onclick="openSubNav('g1',this)">房屋管理 <span class="chev">▸</span></button>
       </div>
       <div class="nav-group">
-        <button class="nav-head" onclick="openSubNav('g2',this)">月末抄表 <span class="chev">▸</span></button>
+        <button class="nav-head" onclick="openSubNav('g_bill',this)">账单管理 <span class="chev">▸</span></button>
       </div>
-      <div class="nav-group"><button class="nav-leaf" data-view="bill" onclick="showView('bill');closeNav()">生成账单</button></div>
       <div class="nav-group">
         <button class="nav-head" onclick="openSubNav('g3',this)">设置 <span class="chev">▸</span></button>
+      </div>
+      <div class="nav-group">
+        <button class="nav-head" onclick="openSubNav('g4',this)">个人中心 <span class="chev">▸</span></button>
       </div>
     </div>
     <!-- 二级菜单弹窗 -->
@@ -183,7 +185,7 @@ const KEY="rental_mvp_v1";
 const DEF={water:3.5,elec:0.65,gas:3.2,hot:8,mgmt:100};
 let state=load();
 let editingRoomId=null;
-let lastReadMonth=curMonth(),lastBillMonth=curMonth();
+let lastReadMonth=curMonth(),lastBillMonth=curMonth(),lastHistoryMonth=prevMonth(curMonth());
 let _authProp=null;        // 当前正在管理授权的房源
 let delegated=[];          // 受托人视角：被授权的楼栋及房间/读数
 let myAuths=[];            // 房东视角：我发出的授权列表
@@ -238,10 +240,17 @@ const NAV_GROUPS={
     {v:'roomList',l:'房间列表'},
     {v:'defaultFees',l:'水电费用'}
   ]},
-  g2:{title:'月末抄表', children:[{v:'reading',l:'录入本月读数'}]},
+  g_bill:{title:'账单管理', children:[
+    {v:'bill',l:'本月账单'},
+    {v:'history',l:'历史账单'},
+    {v:'reading',l:'录入本月读数'}
+  ]},
   g3:{title:'设置', children:[
     {v:'data',l:'数据备份'},
     {v:'cloud',l:'云同步'}
+  ]},
+  g4:{title:'个人中心', children:[
+    {v:'stats',l:'数据统计'}
   ]}
 };
 let currentView='addProperty';
@@ -261,8 +270,8 @@ function showView(v){
   currentView=v;
   document.querySelectorAll("[data-view]").forEach(c=>c.classList.toggle("active",c.dataset.view===v));
   const fn={addProperty:renderAddProperty,addRoom:renderAddRoom,defaultFees:renderDefaultFees,
-    roomList:renderRoomList,reading:renderReading,bill:renderBill,data:renderData,cloud:renderCloud,
-    auth:renderAuthManage}[v];
+    roomList:renderRoomList,reading:renderReading,bill:renderBill,history:renderHistoryBill,
+    data:renderData,cloud:renderCloud,auth:renderAuthManage,stats:renderStats}[v];
   if(fn)fn();
   window.scrollTo(0,0);
 }
@@ -325,6 +334,7 @@ function renderDefaultFees(){
     $("contentInner").innerHTML=`<div class="topbar">⚙️ 水电费用</div>
       <div class="card"><div class="empty">请先在「房屋管理 → 添加房源」创建楼栋，再设置水电费用。</div></div>`;return;
   }
+  const opts=state.properties.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
   const cards=state.properties.map(p=>{
     const d=state.propDefaults[p.id]||{};
     const set=d.water!=null;
@@ -356,8 +366,35 @@ function renderDefaultFees(){
     </div>`;
   }).join("");
   $("contentInner").innerHTML=`<div class="topbar">⚙️ 水电费用</div>
-    <div class="card"><div class="hint" style="margin-top:0">不同房源的水电单价可分别设置，新增房间时会自动带入对应房源的单价。点击房源卡片展开设置。</div></div>
+    <div class="card">
+      <div class="row-actions"><button class="btn-gold" onclick="showFeeAddForm()">＋ 新增房源水电费用</button></div>
+      <div id="feeAddForm" style="display:none;margin-top:12px;border:1px dashed var(--line);border-radius:14px;padding:14px;background:var(--gold-soft)">
+        <h3 style="margin-top:0">新增房源水电费用</h3>
+        <div class="grid g2"><div><label>选择房源 *</label><select id="fa_prop">${opts}</select></div><div></div></div>
+        <div class="grid g3">
+          <div><label>水费（元/吨）</label><input id="fa_water" type="number" min="0" step="0.01" placeholder="3.5"></div>
+          <div><label>电费（元/度）</label><input id="fa_elec" type="number" min="0" step="0.01" placeholder="0.65"></div>
+          <div><label>燃气费（元/方）</label><input id="fa_gas" type="number" min="0" step="0.01" placeholder="3.2"></div>
+          <div><label>热水费（元/吨）</label><input id="fa_hot" type="number" min="0" step="0.01" placeholder="8"></div>
+          <div><label>管理费（元/月）</label><input id="fa_mgmt" type="number" min="0" step="0.01" placeholder="100"></div>
+          <div></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn-line" onclick="hideFeeAddForm()">取消</button>
+          <button class="btn-gold" onclick="saveFeeAdd()">保存</button>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:12px">不同房源的水电单价可分别设置，新增房间时会自动带入对应房源的单价。点击房源卡片展开设置；也可点上方「＋ 新增房源水电费用」为某个房源建立费用卡片。</div>
+    </div>
     ${cards}`;
+}
+function showFeeAddForm(){const f=$("feeAddForm");if(f)f.style.display='block';}
+function hideFeeAddForm(){const f=$("feeAddForm");if(f){f.style.display='none';
+  ['fa_water','fa_elec','fa_gas','fa_hot','fa_mgmt'].forEach(id=>$(id).value="");}}
+function saveFeeAdd(){
+  const pid=$("fa_prop").value;if(!pid){toast("请选择房源");return;}
+  state.propDefaults[pid]={water:+$("fa_water").value||0,elec:+$("fa_elec").value||0,gas:+$("fa_gas").value||0,hot:+$("fa_hot").value||0,mgmt:+$("fa_mgmt").value||0};
+  save();toast("已新增「"+(getProp(pid)?getProp(pid).name:"")+"」水电费用");renderDefaultFees();
 }
 function togglePropFee(pid){
   const body=$("feecard_"+pid);if(!body)return;
@@ -770,48 +807,52 @@ function buildBillText(r,reading,m){
   L.push("请于每月约定日前支付，谢谢配合！");
   return L.join("\n");
 }
+function billCard(r,m){
+  const reading=getReading(r.id,m);const b=computeBill(r,reading);
+  const text=buildBillText(r,reading,m);
+  const utilRows=[
+    {n:'水费',u:'吨',p:r.waterPrice,s:reading?reading.waterStart:null,e:reading?reading.waterEnd:null,c:b.wC,cost:b.wCost},
+    {n:'电费',u:'度',p:r.elecPrice,s:reading?reading.elecStart:null,e:reading?reading.elecEnd:null,c:b.eC,cost:b.eCost},
+    {n:'燃气费',u:'方',p:r.gasPrice,s:reading?reading.gasStart:null,e:reading?reading.gasEnd:null,c:b.gC,cost:b.gCost},
+    {n:'热水费',u:'吨',p:r.hotPrice,s:reading?reading.hotStart:null,e:reading?reading.hotEnd:null,c:b.hC,cost:b.hotCost},
+  ];
+  const detailTable=`<table class="bill-detail-table"><thead><tr><th>项目</th><th>上期</th><th>本期</th><th>用量</th><th>金额</th></tr></thead><tbody>`+
+    utilRows.map(row=>{
+      const has=row.s!=null&&row.e!=null;
+      return `<tr><td><b>${row.n}</b></td><td>${has?fmt(row.s):'—'}</td><td>${has?fmt(row.e):'—'}</td><td>${has?fmt(row.c)+row.u:'—'}</td><td class="amt">${has?'¥'+fmt(row.cost):'未抄表'}</td></tr>`;
+    }).join('')+
+    `<tr><td><b>月租</b></td><td>—</td><td>—</td><td>—</td><td class="amt">¥${fmt(r.rent)}</td></tr>`+
+    `<tr><td><b>管理费</b></td><td>—</td><td>—</td><td>—</td><td class="amt">¥${fmt(r.mgmtFee)}</td></tr>`+
+    `</tbody></table>`;
+  return `<div class="card bill-card">
+    <div class="bill-head" onclick="toggleBillRoom('${r.id}')">
+      <div class="bill-title">
+        <span class="chev" id="chev_${r.id}">▸</span>
+        <b class="room-name">${escapeHtml(r.name)}</b>
+        <span class="muted">${escapeHtml(getPropName(r))} · ${escapeHtml(r.tenant||"未填租客")}</span>
+      </div>
+      <span class="${reading?'tag-ok':'tag-warn'}">${reading?'已抄表':'未抄表'}</span>
+    </div>
+    <div class="bill-body" id="billbody_${r.id}" style="display:none">
+      <div style="border-top:1px solid var(--line);margin:6px 0">${detailTable}</div>
+      <div class="bar" style="border-top:2px solid var(--brand);padding-top:10px"><span style="font-size:17px">本月应交租金合计</span><b style="color:var(--brand-d);font-size:22px">¥${fmt(b.total)}</b></div>
+      <div class="row-actions">
+        <button class="btn-gold" onclick="downloadBillImage('${r.id}','${m}')">账单下载</button>
+        <button class="btn-line" onclick="copyText(\`${encodeURIComponent(text)}\`)">复制账单文案</button>
+      </div>
+    </div>
+  </div>`;
+}
 function renderBill(){
   const m=lastBillMonth;
-  if(!state.rooms.length){$("contentInner").innerHTML=`<div class="topbar">🧾 生成账单</div><div class="card"><div class="empty">暂无房间。</div></div>`;return;}
+  if(!state.rooms.length){$("contentInner").innerHTML=`<div class="topbar">🧾 本月账单</div><div class="card"><div class="empty">暂无房间。</div></div>`;return;}
   let totRent=0,totMgmt=0,totUtil=0,totAll=0,html="";
   state.rooms.forEach(r=>{
     const reading=getReading(r.id,m);const b=computeBill(r,reading);
     totRent+=r.rent;totMgmt+=r.mgmtFee;totUtil+=b.util;totAll+=b.total;
-    const text=buildBillText(r,reading,m);
-    const utilRows=[
-      {n:'水费',u:'吨',p:r.waterPrice,s:reading?reading.waterStart:null,e:reading?reading.waterEnd:null,c:b.wC,cost:b.wCost},
-      {n:'电费',u:'度',p:r.elecPrice,s:reading?reading.elecStart:null,e:reading?reading.elecEnd:null,c:b.eC,cost:b.eCost},
-      {n:'燃气费',u:'方',p:r.gasPrice,s:reading?reading.gasStart:null,e:reading?reading.gasEnd:null,c:b.gC,cost:b.gCost},
-      {n:'热水费',u:'吨',p:r.hotPrice,s:reading?reading.hotStart:null,e:reading?reading.hotEnd:null,c:b.hC,cost:b.hotCost},
-    ];
-    const detailTable=`<table class="bill-detail-table"><thead><tr><th>项目</th><th>上期</th><th>本期</th><th>用量</th><th>金额</th></tr></thead><tbody>`+
-      utilRows.map(row=>{
-        const has=row.s!=null&&row.e!=null;
-        return `<tr><td><b>${row.n}</b></td><td>${has?fmt(row.s):'—'}</td><td>${has?fmt(row.e):'—'}</td><td>${has?fmt(row.c)+row.u:'—'}</td><td class="amt">${has?'¥'+fmt(row.cost):'未抄表'}</td></tr>`;
-      }).join('')+
-      `<tr><td><b>月租</b></td><td>—</td><td>—</td><td>—</td><td class="amt">¥${fmt(r.rent)}</td></tr>`+
-      `<tr><td><b>管理费</b></td><td>—</td><td>—</td><td>—</td><td class="amt">¥${fmt(r.mgmtFee)}</td></tr>`+
-      `</tbody></table>`;
-    html+=`<div class="card bill-card">
-      <div class="bill-head" onclick="toggleBillRoom('${r.id}')">
-        <div class="bill-title">
-          <span class="chev" id="chev_${r.id}">▸</span>
-          <b class="room-name">${escapeHtml(r.name)}</b>
-          <span class="muted">${escapeHtml(getPropName(r))} · ${escapeHtml(r.tenant||"未填租客")}</span>
-        </div>
-        <span class="${reading?'tag-ok':'tag-warn'}">${reading?'已抄表':'未抄表'}</span>
-      </div>
-      <div class="bill-body" id="billbody_${r.id}" style="display:none">
-        <div style="border-top:1px solid var(--line);margin:6px 0">${detailTable}</div>
-        <div class="bar" style="border-top:2px solid var(--brand);padding-top:10px"><span style="font-size:17px">本月应交租金合计</span><b style="color:var(--brand-d);font-size:22px">¥${fmt(b.total)}</b></div>
-        <div class="row-actions">
-          <button class="btn-gold" onclick="downloadBillImage('${r.id}','${m}')">账单下载</button>
-          <button class="btn-line" onclick="copyText(\`${encodeURIComponent(text)}\`)">复制账单文案</button>
-        </div>
-      </div>
-    </div>`;
+    html+=billCard(r,m);
   });
-  $("contentInner").innerHTML=`<div class="topbar">🧾 生成账单</div>
+  $("contentInner").innerHTML=`<div class="topbar">🧾 本月账单</div>
     <div class="card">
       <div class="bar"><h2 style="margin:0">选择月份</h2>
         <div style="width:170px"><input id="bill_month" type="month" value="${m}" onchange="lastBillMonth=this.value;renderBill()"></div></div>
@@ -822,6 +863,18 @@ function renderBill(){
         <div class="stat" style="grid-column:1/-1"><div class="k">本月应交租金合计（${state.rooms.length} 间）</div><div class="v">¥${fmt(totAll)}</div></div>
       </div>
       <div class="row-actions"><button class="btn-ghost" onclick="copyAll()">复制全部汇总文案</button></div>
+    </div>${html}`;
+}
+function renderHistoryBill(){
+  const m=lastHistoryMonth;
+  if(!state.rooms.length){$("contentInner").innerHTML=`<div class="topbar">📜 历史账单</div><div class="card"><div class="empty">暂无房间。</div></div>`;return;}
+  let totAll=0,html="";
+  state.rooms.forEach(r=>{const b=computeBill(r,getReading(r.id,m));totAll+=b.total;html+=billCard(r,m);});
+  $("contentInner").innerHTML=`<div class="topbar">📜 历史账单</div>
+    <div class="card">
+      <div class="bar"><h2 style="margin:0">选择月份</h2>
+        <div style="width:170px"><input id="hist_month" type="month" value="${m}" onchange="lastHistoryMonth=this.value;renderHistoryBill()"></div></div>
+      <div class="hint">按房源-房间号分类的历史账单。点房间号展开明细；历史账单仅可查看，不可修改或删除。如需更正数据，请到「录入本月读数」修改或「本月账单」重算。</div>
     </div>${html}`;
 }
 function toggleBillRoom(id){
@@ -958,6 +1011,52 @@ function downloadBillImage(rid,m){
 }
 function copyText(enc){const text=decodeURIComponent(enc);const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();
   try{document.execCommand("copy");toast("已复制到剪贴板");}catch(e){toast("复制失败，请手动选择");}document.body.removeChild(ta);}
+
+/* ---------- 数据统计（月度统计报表） ---------- */
+function monthOptions(){
+  const arr=[];const now=new Date();
+  for(let i=23;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);arr.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));}
+  return arr;
+}
+function renderStats(){
+  const props=state.properties;
+  if(!props.length){$("contentInner").innerHTML=`<div class="topbar">📊 数据统计</div><div class="card"><div class="empty">请先在「房屋管理 → 添加房源」创建楼栋。</div></div>`;return;}
+  const opts=props.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  const mopts=monthOptions().map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join("");
+  $("contentInner").innerHTML=`<div class="topbar">📊 数据统计 · 月度报表</div>
+    <div class="card">
+      <h2>月度统计报表</h2>
+      <div class="grid g2">
+        <div><label>选择房源 *</label><select id="st_prop">${opts}</select></div>
+        <div><label>选择月度 *</label><select id="st_month">${mopts}</select></div>
+      </div>
+      <div class="hint">两个字段均为必选，选择后点击「提交」生成该房源当月的统计报表。</div>
+      <div class="row-actions"><button class="btn-primary" onclick="runStats()">提交</button></div>
+      <div id="stResult"></div>
+    </div>`;
+}
+function runStats(){
+  const pid=$("st_prop").value,m=$("st_month").value;
+  if(!pid){toast("请选择房源");return;}
+  if(!m){toast("请选择月度");return;}
+  const p=getProp(pid);if(!p)return;
+  const rooms=state.rooms.filter(r=>r.propertyId===pid);
+  let rows="",subTotal=0;
+  rooms.forEach(r=>{
+    const reading=getReading(r.id,m);const b=computeBill(r,reading);
+    const wf=reading?fmt(b.wCost):"0.00",ef=reading?fmt(b.eCost):"0.00",gf=reading?fmt(b.gCost):"0.00",hf=reading?fmt(b.hotCost):"0.00";
+    subTotal+=b.total;
+    rows+=`<tr><td>${escapeHtml(p.name)}</td><td>${monthLabel(m)}</td><td>${escapeHtml(r.name)}</td>
+      <td>¥${fmt(r.rent)}</td><td>¥${fmt(r.mgmtFee)}</td><td>¥${wf}</td><td>¥${ef}</td><td>¥${gf}</td><td>¥${hf}</td>
+      <td class="amt" style="font-weight:800">¥${fmt(b.total)}</td></tr>`;
+  });
+  if(!rooms.length)rows=`<tr><td colspan="10" class="muted">该房源下暂无房间</td></tr>`;
+  $("stResult").innerHTML=`<table class="bill-detail-table" style="margin-top:14px"><thead><tr>
+    <th>房源名称</th><th>月度</th><th>房间号</th><th>租金</th><th>管理费</th><th>水费</th><th>电费</th><th>燃气费</th><th>热水费</th><th>小计</th></tr></thead>
+    <tbody>${rows}
+    <tr style="background:var(--brand-soft)"><td colspan="9" style="text-align:right;font-weight:800;color:var(--brand-d)">合计（${rooms.length} 间）</td><td class="amt" style="font-weight:800;color:var(--brand-d)">¥${fmt(subTotal)}</td></tr>
+    </tbody></table>`;
+}
 
 /* ---------- 数据备份 ---------- */
 function renderData(){
