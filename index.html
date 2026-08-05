@@ -308,8 +308,8 @@ function positionTabSheet(){
   if(!panel||!nav||!$('tabSheet').classList.contains('open')) return;
   const navRect=nav.getBoundingClientRect();
   const tabW=_openTabEl?_openTabEl.getBoundingClientRect().width:window.innerWidth/4;
-  // 弹层宽度尽量接近一级 tab，但留出最小可读宽度与屏幕上限
-  const pw=Math.max(tabW, Math.min(tabW*1.8, window.innerWidth*0.82));
+  // 弹层只比一级 tab 宽一点点（约 36px），并保证最长项可读、不超出屏幕
+  const pw=Math.min(window.innerWidth*0.86, Math.max(tabW+36, 120));
   let tabCenter=window.innerWidth/2;
   if(_openTabEl){const r=_openTabEl.getBoundingClientRect(); tabCenter=r.left+r.width/2;}
   let left=Math.max(10, Math.min(tabCenter-pw/2, window.innerWidth-pw-10));
