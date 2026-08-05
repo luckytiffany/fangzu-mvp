@@ -20,37 +20,30 @@
   }
   .app{display:flex;min-height:100vh}
   /* 顶部常驻菜单按钮 */
-  .menu-btn{position:fixed;left:16px;top:16px;z-index:80;background:#fff;border:1px solid var(--line);border-radius:50px;
-    padding:10px 18px;font-size:16px;font-weight:700;color:var(--brand-d);box-shadow:0 3px 10px rgba(43,58,43,.08);display:flex;align-items:center;gap:8px}
-  .menu-btn:active{transform:translateY(1px)}
-  /* 导航抽屉（弹窗式） */
-  .nav-drawer{position:fixed;inset:0;z-index:200;display:none}
-  .nav-drawer.open{display:block}
-  .nav-backdrop{position:absolute;inset:0;background:rgba(30,40,30,.42);backdrop-filter:blur(2px)}
-  .nav-panel{position:absolute;left:0;top:0;bottom:0;width:280px;background:linear-gradient(180deg,#fffefb 0%,#f7f4ee 100%);
-    border-right:1px solid var(--line);box-shadow:8px 0 30px rgba(43,58,43,.12);padding:22px 16px;overflow:auto;animation:slideIn .22s ease-out}
-  @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
-  .nav-close{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--line);font-size:18px;color:var(--sub)}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;padding:8px 6px 22px;color:var(--brand-d)}
-  .brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 8px rgba(61,106,61,.22)}
-  .brand small{display:block;font-size:12px;font-weight:500;color:var(--sub);letter-spacing:1px}
-  .nav-group{margin-bottom:10px}
-  .nav-head,.nav-leaf{width:100%;text-align:left;padding:14px 16px;font-weight:700;cursor:pointer;border-radius:14px;color:var(--ink);user-select:none;
-    background:#fff;border:1px solid var(--line);font-size:17px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 4px rgba(43,58,43,.04)}
-  .nav-head:hover,.nav-leaf:hover{background:var(--brand-soft);border-color:#d0e0d0}
-  .nav-head:active,.nav-leaf:active{transform:translateY(1px)}
-  .nav-head .chev{color:var(--sub);font-size:14px;transition:.2s}
-  .nav-head.active .chev{transform:rotate(90deg)}
-  .nav-leaf.active{background:var(--brand);color:#fff;border-color:var(--brand)}
-  /* 二级菜单弹窗 */
-  .subnav-popup{position:absolute;left:296px;top:0;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 14px 40px rgba(43,58,43,.18);display:none;min-width:210px;z-index:210;animation:popIn .18s ease-out}
-  @keyframes popIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
-  .subnav-title{font-size:15px;color:var(--sub);margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
-  .subnav-item{display:block;width:100%;text-align:left;padding:13px 14px;margin:7px 0;border-radius:12px;background:var(--gold-soft);border:1px solid #eaddcc;color:var(--ink2);font-size:16px;font-weight:700;cursor:pointer}
-  .subnav-item:hover{background:#ede4d3}
-  .subnav-item.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  /* 底部固定 tab 导航 */
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:120;display:flex;background:rgba(255,255,255,.96);
+    -webkit-backdrop-filter:saturate(160%) blur(8px);backdrop-filter:saturate(160%) blur(8px);border-top:1px solid var(--line);
+    box-shadow:0 -4px 18px rgba(43,58,43,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .bottom-nav .tab{flex:1;background:none;border:none;border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sub);cursor:pointer}
+  .bottom-nav .tab .ti{font-size:24px;line-height:1}
+  .bottom-nav .tab .tl{font-size:13px;font-weight:700}
+  .bottom-nav .tab.active{color:var(--brand-d);background:var(--brand-soft)}
+  .bottom-nav .tab:active{transform:translateY(1px)}
+  /* 二级菜单底部弹层 */
+  .tab-sheet{position:fixed;inset:0;z-index:130;display:none}
+  .tab-sheet.open{display:block}
+  .tab-sheet-mask{position:absolute;inset:0;background:rgba(28,38,28,.4)}
+  .tab-sheet-panel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,#fffefb,#f5f2ed);
+    border-top-left-radius:22px;border-top-right-radius:22px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:72vh;overflow:auto;
+    box-shadow:0 -10px 40px rgba(43,58,43,.22);animation:slideUp .2s ease-out}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .tab-sheet-title{font-size:15px;color:var(--sub);font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+  .tab-sheet-items{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tab-item{display:block;width:100%;text-align:center;padding:18px 12px;border-radius:16px;background:var(--gold-soft);border:1px solid #eaddcc;color:var(--ink2);font-size:17px;font-weight:800;cursor:pointer}
+  .tab-item:hover{background:#ede4d3}
+  .tab-item.active{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;border-color:var(--brand)}
   /* 内容区 */
-  .content{flex:1;padding:18px;min-width:0;padding-top:72px}
+  .content{flex:1;padding:18px;min-width:0;padding-bottom:96px}
   .topbar{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin-bottom:16px;font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(43,58,43,.05)}
   .topbar .ico{font-size:22px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 3px 10px rgba(43,58,43,.06)}
@@ -131,7 +124,7 @@
   .stat-card .ico{font-size:34px}
   .stat-card .t{font-size:19px;font-weight:800;color:var(--ink2);margin-top:8px}
   .stat-card .d{font-size:14px;color:var(--sub);margin-top:6px;line-height:1.6}
-  @media(max-width:760px){.app{flex-direction:column}.nav-panel{width:85%}.subnav-popup{left:10px;right:10px;top:auto;bottom:20px}.content{padding-left:14px;padding-right:14px}}
+  @media(max-width:760px){.app{flex-direction:column}.content{padding-left:14px;padding-right:14px}}
   /* 入口登录页 */
   #authScreen{position:fixed;inset:0;background:linear-gradient(160deg,#e8f0e5 0%,#f5efe4 60%,#f5f2ed 100%);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
   body.logged-out #authScreen{display:flex}
@@ -148,35 +141,23 @@
 </head>
 <body class="logged-out">
 <div class="app">
-  <!-- 导航抽屉（弹窗式菜单） -->
-  <aside class="nav-drawer" id="navDrawer">
-    <div class="nav-backdrop" onclick="closeNav()"></div>
-    <div class="nav-panel">
-      <button class="nav-close" onclick="closeNav()">✕</button>
-      <div class="brand"><span class="logo">🏠</span>房租水电<small>房东好帮手</small></div>
-      <div class="nav-group">
-        <button class="nav-head" onclick="openSubNav('g1',this)">房屋管理 <span class="chev">▸</span></button>
-      </div>
-      <div class="nav-group">
-        <button class="nav-head" onclick="openSubNav('g_bill',this)">账单管理 <span class="chev">▸</span></button>
-      </div>
-      <div class="nav-group">
-        <button class="nav-head" onclick="openSubNav('g3',this)">设置 <span class="chev">▸</span></button>
-      </div>
-      <div class="nav-group">
-        <button class="nav-head" onclick="openSubNav('g4',this)">个人中心 <span class="chev">▸</span></button>
-      </div>
-    </div>
-    <!-- 二级菜单弹窗 -->
-    <div class="subnav-popup" id="subnavPopup">
-      <div class="subnav-title" id="subnavTitle">菜单</div>
-      <div class="subnav-items" id="subnavItems"></div>
-    </div>
-  </aside>
   <main class="content" id="content">
-    <button class="menu-btn" onclick="openNav()">☰ 菜单</button>
     <div id="contentInner"></div>
   </main>
+  <!-- 底部固定 tab 导航 -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="tab" data-group="g1" onclick="openTab('g1')"><span class="ti">🏠</span><span class="tl">房屋管理</span></button>
+    <button class="tab" data-group="g_bill" onclick="openTab('g_bill')"><span class="ti">🧾</span><span class="tl">账单管理</span></button>
+    <button class="tab" data-group="g3" onclick="openTab('g3')"><span class="ti">⚙️</span><span class="tl">设置</span></button>
+    <button class="tab" data-group="g4" onclick="openTab('g4')"><span class="ti">👤</span><span class="tl">我的</span></button>
+  </nav>
+  <div class="tab-sheet" id="tabSheet">
+    <div class="tab-sheet-mask" onclick="closeTabSheet()"></div>
+    <div class="tab-sheet-panel">
+      <div class="tab-sheet-title" id="tabSheetTitle"></div>
+      <div class="tab-sheet-items" id="tabSheetItems"></div>
+    </div>
+  </div>
 </div>
 <div class="modal-mask" id="modalMask"><div class="modal-box" id="modalBox"></div></div>
 <div id="authScreen">
@@ -269,29 +250,33 @@ const NAV_GROUPS={
   ]}
 };
 let currentView='addProperty';
-function openNav(){$('navDrawer').classList.add('open'); closeSubNav();}
-function closeNav(){$('navDrawer').classList.remove('open'); closeSubNav();}
-function openSubNav(g,btn){
+function groupOfView(v){for(const g in NAV_GROUPS){if(NAV_GROUPS[g].children.some(c=>c.v===v))return g;}return null;}
+function highlightTab(){const g=groupOfView(currentView);
+  document.querySelectorAll('.bottom-nav .tab').forEach(t=>t.classList.toggle('active',t.dataset.group===g));}
+function openTab(g){
   const gp=NAV_GROUPS[g]; if(!gp)return;
-  $('subnavTitle').textContent=gp.title;
-  $('subnavItems').innerHTML=gp.children.map(c=>
-    `<button class="subnav-item ${currentView===c.v?'active':''}" data-view="${c.v}" onclick="showView('${c.v}');closeNav()">${c.l}</button>`
+  if($('tabSheet').classList.contains('open') && $('tabSheet').dataset.group===g){closeTabSheet();return;}
+  $('tabSheet').dataset.group=g;
+  $('tabSheetTitle').textContent=gp.title;
+  $('tabSheetItems').innerHTML=gp.children.map(c=>
+    `<button class="tab-item ${currentView===c.v?'active':''}" data-view="${c.v}" onclick="showView('${c.v}');closeTabSheet()">${c.l}</button>`
   ).join('');
-  const popup=$('subnavPopup'); popup.style.display='block';
-  if(btn&&window.innerWidth>760){const r=btn.getBoundingClientRect(); popup.style.top=(Math.max(16,r.top+window.scrollY))+'px'; popup.style.bottom='auto';}
+  document.querySelectorAll('.bottom-nav .tab').forEach(t=>t.classList.toggle('active',t.dataset.group===g));
+  $('tabSheet').classList.add('open');
 }
-function closeSubNav(){$('subnavPopup').style.display='none';}
+function closeTabSheet(){$('tabSheet').classList.remove('open');$('tabSheet').dataset.group='';highlightTab();}
 function showView(v){
   currentView=v;
   document.querySelectorAll("[data-view]").forEach(c=>c.classList.toggle("active",c.dataset.view===v));
+  highlightTab();
   const fn={addProperty:renderAddProperty,addRoom:renderAddRoom,defaultFees:renderDefaultFees,
     roomList:renderRoomList,reading:renderReading,bill:renderBill,history:renderHistoryBill,
     data:renderData,cloud:renderCloud,auth:renderAuthManage,stats:renderStats}[v];
   if(fn)fn();
   window.scrollTo(0,0);
 }
-// ESC 关闭抽屉
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeNav();});
+// ESC 关闭底部弹层
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTabSheet();});
 
 /* ---------- 添加房源 ---------- */
 function renderAddProperty(){
@@ -465,6 +450,16 @@ function renderAddRoom(){
       <div><label>热水单价（元/吨）</label><input id="rm_hot" type="number" min="0" step="0.01"></div>
     </div>
     <div class="hint">五个费用已自动带入所选房源的「水电费用」设置，可在此修改（仅影响本房间）。</div>
+    <h3 style="margin-top:16px">初始表底（首次抄表的上期数）</h3>
+    <div class="grid g2">
+      <div><label>初始水表</label><input id="rm_iwater" type="number" min="0" step="0.01" placeholder="如 120"></div>
+      <div><label>初始电表</label><input id="rm_ielec" type="number" min="0" step="0.01" placeholder="如 340"></div>
+    </div>
+    <div class="grid g2" style="margin-top:6px">
+      <div><label>初始燃气</label><input id="rm_igas" type="number" min="0" step="0.01" placeholder="如 60"></div>
+      <div><label>初始热水</label><input id="rm_ihot" type="number" min="0" step="0.01" placeholder="如 25"></div>
+    </div>
+    <div class="hint">填了初始表底后，第一次「录入本月读数」时，上期会自动带出这些数字，之后每月自动接上月的末期。</div>
     <div class="row-actions">
       <button class="btn-primary" onclick="saveRoom()">保存房间号</button>
       <button class="btn-line" id="rm_cancel" style="display:none" onclick="cancelRoomEdit()">取消编辑</button>
@@ -486,7 +481,9 @@ function saveRoom(){
     leaseStart:$("rm_ls").value,leaseEnd:$("rm_le").value,
     rent:+$("rm_rent").value||0,mgmtFee:+$("rm_mgmt").value||0,
     waterPrice:+$("rm_water").value||0,elecPrice:+$("rm_elec").value||0,
-    gasPrice:+$("rm_gas").value||0,hotPrice:+$("rm_hot").value||0};
+    gasPrice:+$("rm_gas").value||0,hotPrice:+$("rm_hot").value||0,
+    initWater:valNum("rm_iwater"),initElec:valNum("rm_ielec"),
+    initGas:valNum("rm_igas"),initHot:valNum("rm_ihot")};
   if(editingRoomId){
     const r=state.rooms.find(x=>x.id===editingRoomId);Object.assign(r,data);editingRoomId=null;
     save();toast("房间已更新");showView("roomList");
@@ -494,7 +491,7 @@ function saveRoom(){
     if(state.rooms.some(x=>x.propertyId===pid&&x.name===name)){toast("该房源下房号已存在");return;}
     state.rooms.push({id:uid(),...data});save();toast("房间已添加");
     // 清空表单便于连续添加
-    ["rm_name","rm_tenant","rm_ls","rm_le","rm_rent"].forEach(id=>$(id).value="");prefillRoomFees();
+    ["rm_name","rm_tenant","rm_ls","rm_le","rm_rent","rm_iwater","rm_ielec","rm_igas","rm_ihot"].forEach(id=>$(id).value="");prefillRoomFees();
   }
 }
 function prefillRoomEdit(id){
@@ -504,6 +501,8 @@ function prefillRoomEdit(id){
   $("rm_ls").value=r.leaseStart||"";$("rm_le").value=r.leaseEnd||"";
   $("rm_rent").value=r.rent;$("rm_mgmt").value=r.mgmtFee;
   $("rm_water").value=r.waterPrice;$("rm_elec").value=r.elecPrice;$("rm_gas").value=r.gasPrice;$("rm_hot").value=r.hotPrice;
+  $("rm_iwater").value=r.initWater!=null?r.initWater:"";$("rm_ielec").value=r.initElec!=null?r.initElec:"";
+  $("rm_igas").value=r.initGas!=null?r.initGas:"";$("rm_ihot").value=r.initHot!=null?r.initHot:"";
   $("rm_cancel").style.display="inline-block";
 }
 function cancelRoomEdit(){editingRoomId=null;showView("addRoom");}
@@ -606,8 +605,10 @@ function renderReading(){
 function toggleProp(pid){const el=$("prop_"+pid);const open=el.style.display!=="none";el.style.display=open?"none":"block";$("chev_"+pid).parentElement.classList.toggle("open",!open);}
 function roomReadCard(r,m){
   const cur=getReading(r.id,m);const prev=getPrevEnd(r.id,m);
-  const S={w:cur?cur.waterStart:(prev?prev.waterEnd:""),e:cur?cur.elecStart:(prev?prev.elecEnd:""),
-    g:cur?cur.gasStart:(prev?prev.gasEnd:""),h:cur?cur.hotStart:(prev?prev.hotEnd:"")};
+  const S={w:cur?cur.waterStart:(prev?prev.waterEnd:(r.initWater!=null?r.initWater:"")),
+    e:cur?cur.elecStart:(prev?prev.elecEnd:(r.initElec!=null?r.initElec:"")),
+    g:cur?cur.gasStart:(prev?prev.gasEnd:(r.initGas!=null?r.initGas:"")),
+    h:cur?cur.hotStart:(prev?prev.hotEnd:(r.initHot!=null?r.initHot:""))};
   const E={w:cur?cur.waterEnd:"",e:cur?cur.elecEnd:"",g:cur?cur.gasEnd:"",h:cur?cur.hotEnd:""};
   const meters=[['w','水'],['e','电'],['g','燃气'],['h','热水']];
   const rows=meters.map(([k,label])=>
@@ -697,8 +698,10 @@ function roomReadCardD(r,m,ownerId){
   const del=delegated.find(d=>d.ownerId===ownerId);
   const cur=del?del.readings.find(x=>x.roomId===r.id&&x.month===m):null;
   const prev=del?del.readings.find(x=>x.roomId===r.id&&x.month===prevMonth(m)):null;
-  const S={w:cur?cur.waterStart:(prev?prev.waterEnd:""),e:cur?cur.elecStart:(prev?prev.elecEnd:""),
-    g:cur?cur.gasStart:(prev?prev.gasEnd:""),h:cur?cur.hotStart:(prev?prev.hotEnd:"")};
+  const S={w:cur?cur.waterStart:(prev?prev.waterEnd:(r.initWater!=null?r.initWater:"")),
+    e:cur?cur.elecStart:(prev?prev.elecEnd:(r.initElec!=null?r.initElec:"")),
+    g:cur?cur.gasStart:(prev?prev.gasEnd:(r.initGas!=null?r.initGas:"")),
+    h:cur?cur.hotStart:(prev?prev.hotEnd:(r.initHot!=null?r.initHot:""))};
   const E={w:cur?cur.waterEnd:"",e:cur?cur.elecEnd:"",g:cur?cur.gasEnd:"",h:cur?cur.hotEnd:""};
   const meters=[['w','dw','水'],['e','de','电'],['g','dg','燃气'],['h','dh','热水']];
   const rows=meters.map(([k,prefix,label])=>
@@ -1387,8 +1390,13 @@ async function refreshDelegations(){const sb=getClient();if(!sb||!cloud.user)ret
   const {data:my}=await sb.from('authorizations').select('*').eq('owner_id',cloud.user.id);
   myAuths=my||[];
 }catch(e){delegated=[];myAuths=[];}}
-async function pullFromCloud(silent){const sb=getClient();if(!sb||!cloud.user)return;if(_syncing)return;_syncing=true;try{const [pr,rr,rdr,dr]=await Promise.all([sb.from('properties').select('*'),sb.from('rooms').select('*'),sb.from('readings').select('*'),sb.from('settings').select('*').maybeSingle()]);if(pr.error)throw pr.error;if(rr.error)throw rr.error;if(rdr.error)throw rdr.error;if(dr.error)throw dr.error;const uid0=cloud.user.id;const P=(pr.data||[]).filter(rv=>rv.user_id===uid0).map(rv=>({id:rv.id,name:rv.name,location:rv.location,lat:rv.lat,lng:rv.lng,updated_at:rv.updated_at}));const R=(rr.data||[]).filter(rv=>rv.user_id===uid0).map(rv=>({id:rv.id,propertyId:rv.property_id,name:rv.name,tenant:rv.tenant,leaseStart:rv.lease_start,leaseEnd:rv.lease_end,rent:rv.rent,mgmtFee:rv.mgmt_fee,waterPrice:rv.water_price,elecPrice:rv.elec_price,gasPrice:rv.gas_price,hotPrice:rv.hot_price,updated_at:rv.updated_at}));const Rd=(rdr.data||[]).filter(rv=>rv.user_id===uid0).map(rv=>({roomId:rv.room_id,month:rv.month,waterStart:rv.water_start,waterEnd:rv.water_end,elecStart:rv.elec_start,elecEnd:rv.elec_end,gasStart:rv.gas_start,gasEnd:rv.gas_end,hotStart:rv.hot_start,hotEnd:rv.hot_end,updated_at:rv.updated_at}));state.properties=mergeById(state.properties,P,x=>x.id);state.rooms=mergeById(state.rooms,R,x=>x.id);state.readings=mergeById(state.readings,Rd,x=>x.roomId+x.month);if(dr&&dr.data){state.propDefaults=(dr.data.prop_defaults&&typeof dr.data.prop_defaults==='object')?dr.data.prop_defaults:{};normalizePropDefaults(state);}await refreshDelegations();save();cloud.lastSync=touch();saveCloudCfg();if(!silent)renderCloud();if(!silent)toast("已从云端同步");}catch(e){if(!silent)toast("同步失败："+(e&&e.message?e.message:e));}finally{_syncing=false;}}
-async function pushToCloud(){const sb=getClient();if(!sb||!cloud.user)return;if(_syncing)return;_syncing=true;try{const t=touch();const P=state.properties.map(x=>({id:x.id,name:x.name,location:x.location,lat:x.lat,lng:x.lng,user_id:cloud.user.id,updated_at:t}));const R=state.rooms.map(x=>({id:x.id,property_id:x.propertyId,name:x.name,tenant:x.tenant,lease_start:x.leaseStart,lease_end:x.leaseEnd,rent:x.rent,mgmt_fee:x.mgmtFee,water_price:x.waterPrice,elec_price:x.elecPrice,gas_price:x.gasPrice,hot_price:x.hotPrice,user_id:cloud.user.id,updated_at:t}));const Rd=state.readings.map(x=>({user_id:cloud.user.id,room_id:x.roomId,month:x.month,water_start:x.waterStart,water_end:x.waterEnd,elec_start:x.elecStart,elec_end:x.elecEnd,gas_start:x.gasStart,gas_end:x.gasEnd,hot_start:x.hotStart,hot_end:x.hotEnd,updated_at:t}));const a1=await sb.from('properties').upsert(P);if(a1.error)throw a1.error;const a2=await sb.from('rooms').upsert(R);if(a2.error)throw a2.error;const a3=await sb.from('readings').upsert(Rd,{onConflict:'user_id,room_id,month'});if(a3.error)throw a3.error;try{const a4=await sb.from('settings').upsert({user_id:cloud.user.id,water:DEF.water,elec:DEF.elec,gas:DEF.gas,hot:DEF.hot,mgmt:DEF.mgmt,prop_defaults:state.propDefaults,updated_at:t});if(a4.error)throw a4.error;}catch(e){/* settings 表若未加 prop_defaults 列，忽略（需运行 supabase_propdefaults.sql） */}cloud.lastSync=t;saveCloudCfg();toast("已同步到云端");}catch(e){toast("同步失败："+(e&&e.message?e.message:e));}finally{_syncing=false;}}
+async function pullFromCloud(silent){const sb=getClient();if(!sb||!cloud.user)return;if(_syncing)return;_syncing=true;try{const [pr,rr,rdr,dr]=await Promise.all([sb.from('properties').select('*'),sb.from('rooms').select('*'),sb.from('readings').select('*'),sb.from('settings').select('*').maybeSingle()]);if(pr.error)throw pr.error;if(rr.error)throw rr.error;if(rdr.error)throw rdr.error;if(dr.error)throw dr.error;const uid0=cloud.user.id;const P=(pr.data||[]).filter(rv=>rv.user_id===uid0).map(rv=>({id:rv.id,name:rv.name,location:rv.location,lat:rv.lat,lng:rv.lng,updated_at:rv.updated_at}));const R=(rr.data||[]).filter(rv=>rv.user_id===uid0).map(rv=>({id:rv.id,propertyId:rv.property_id,name:rv.name,tenant:rv.tenant,leaseStart:rv.lease_start,leaseEnd:rv.lease_end,rent:rv.rent,mgmtFee:rv.mgmt_fee,waterPrice:rv.water_price,elecPrice:rv.elec_price,gasPrice:rv.gas_price,hotPrice:rv.hot_price,initWater:(rv.init_water!=null?rv.init_water:null),initElec:(rv.init_elec!=null?rv.init_elec:null),initGas:(rv.init_gas!=null?rv.init_gas:null),initHot:(rv.init_hot!=null?rv.init_hot:null),updated_at:rv.updated_at}));const Rd=(rdr.data||[]).filter(rv=>rv.user_id===uid0).map(rv=>({roomId:rv.room_id,month:rv.month,waterStart:rv.water_start,waterEnd:rv.water_end,elecStart:rv.elec_start,elecEnd:rv.elec_end,gasStart:rv.gas_start,gasEnd:rv.gas_end,hotStart:rv.hot_start,hotEnd:rv.hot_end,updated_at:rv.updated_at}));state.properties=mergeById(state.properties,P,x=>x.id);state.rooms=mergeById(state.rooms,R,x=>x.id);state.readings=mergeById(state.readings,Rd,x=>x.roomId+x.month);if(dr&&dr.data){state.propDefaults=(dr.data.prop_defaults&&typeof dr.data.prop_defaults==='object')?dr.data.prop_defaults:{};normalizePropDefaults(state);}await refreshDelegations();save();cloud.lastSync=touch();saveCloudCfg();if(!silent)renderCloud();if(!silent)toast("已从云端同步");}catch(e){if(!silent)toast("同步失败："+(e&&e.message?e.message:e));}finally{_syncing=false;}}
+async function pushToCloud(){const sb=getClient();if(!sb||!cloud.user)return;if(_syncing)return;_syncing=true;try{const t=touch();const P=state.properties.map(x=>({id:x.id,name:x.name,location:x.location,lat:x.lat,lng:x.lng,user_id:cloud.user.id,updated_at:t}));const R=state.rooms.map(x=>({id:x.id,property_id:x.propertyId,name:x.name,tenant:x.tenant,lease_start:x.leaseStart,lease_end:x.leaseEnd,rent:x.rent,mgmt_fee:x.mgmtFee,water_price:x.waterPrice,elec_price:x.elecPrice,gas_price:x.gasPrice,hot_price:x.hotPrice,init_water:x.initWater??null,init_elec:x.initElec??null,init_gas:x.initGas??null,init_hot:x.initHot??null,user_id:cloud.user.id,updated_at:t}));const Rd=state.readings.map(x=>({user_id:cloud.user.id,room_id:x.roomId,month:x.month,water_start:x.waterStart,water_end:x.waterEnd,elec_start:x.elecStart,elec_end:x.elecEnd,gas_start:x.gasStart,gas_end:x.gasEnd,hot_start:x.hotStart,hot_end:x.hotEnd,updated_at:t}));const a1=await sb.from('properties').upsert(P);if(a1.error)throw a1.error;
+let a2=await sb.from('rooms').upsert(R);
+if(a2.error){ // rooms 表若未加 init 列，去掉 init 字段重试（需运行 supabase_rooms_init.sql）
+  const R0=state.rooms.map(x=>({id:x.id,property_id:x.propertyId,name:x.name,tenant:x.tenant,lease_start:x.leaseStart,lease_end:x.leaseEnd,rent:x.rent,mgmt_fee:x.mgmtFee,water_price:x.waterPrice,elec_price:x.elecPrice,gas_price:x.gasPrice,hot_price:x.hotPrice,user_id:cloud.user.id,updated_at:t}));
+  a2=await sb.from('rooms').upsert(R0);if(a2.error)throw a2.error;
+}const a3=await sb.from('readings').upsert(Rd,{onConflict:'user_id,room_id,month'});if(a3.error)throw a3.error;try{const a4=await sb.from('settings').upsert({user_id:cloud.user.id,water:DEF.water,elec:DEF.elec,gas:DEF.gas,hot:DEF.hot,mgmt:DEF.mgmt,prop_defaults:state.propDefaults,updated_at:t});if(a4.error)throw a4.error;}catch(e){/* settings 表若未加 prop_defaults 列，忽略（需运行 supabase_propdefaults.sql） */}cloud.lastSync=t;saveCloudCfg();toast("已同步到云端");}catch(e){toast("同步失败："+(e&&e.message?e.message:e));}finally{_syncing=false;}}
 function renderCloud(){const logged=!!cloud.user;const phone=logged?(cloud.user.email||"").replace("@login.local",""):"";const ls=cloud.lastSync?new Date(cloud.lastSync).toLocaleString('zh-CN'):'从未';let html=`<div class="topbar">☁️ 云同步</div>`;if(logged){html+=`<div class="card"><h2>账号</h2><div class="muted">已登录手机号：${escapeHtml(phone)}</div><div class="row-actions"><button class="btn-line" onclick="cloudSignOut()">退出登录</button></div></div>`;html+=`<div class="card"><h2>同步</h2><div class="muted">上次同步：${ls}</div><div class="row-actions"><button class="btn-primary" onclick="pushToCloud()">立即上传到云端</button><button class="btn-ghost" onclick="pullFromCloud(false)">从云端拉取</button></div><div class="hint">每次本地保存（房源/房间/读数）后会自动上传。建议仍保留每月 JSON 备份作双保险。</div></div>`;}else{html+=`<div class="card"><div class="muted">未登录。请在打开应用时用手机号和密码登录。</div></div>`;}html+=`<div class="card"><div class="muted">说明：云同步把房源/房间/读数/默认费用存到免费 Supabase 数据库，换手机、换电脑登录同一手机号即可恢复全部历史。数据按账号隔离，仅你可见。</div></div>`;$("contentInner").innerHTML=html;}
 startupCloud();
 </script>
