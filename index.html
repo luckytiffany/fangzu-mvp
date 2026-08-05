@@ -37,10 +37,12 @@
     -webkit-transform:translateZ(0);transform:translateZ(0);
     will-change:transform;
   }
-  .bottom-nav .tab{flex:1;background:none;border:none;border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sub);cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .bottom-nav .tab .ti{font-size:24px;line-height:1}
+  .bottom-nav .tab{flex:1;background:none;border:none;border-radius:16px;padding:9px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--sub);cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;transition:color .15s}
+  .bottom-nav .tab .ti{font-size:23px;line-height:1;transition:transform .15s}
   .bottom-nav .tab .tl{font-size:13px;font-weight:700;white-space:nowrap}
-  .bottom-nav .tab.active{color:var(--brand-d);background:var(--brand-soft)}
+  .bottom-nav .tab.active{color:var(--brand-d)}
+  .bottom-nav .tab.active .ti{transform:translateY(-1px) scale(1.06)}
+  .bottom-nav .tab.active::before{content:"";position:absolute;top:5px;width:26px;height:4px;border-radius:3px;background:var(--brand)}
   .bottom-nav .tab:active{transform:translateY(1px)}
   /* 二级菜单：从一级 tab 正上方上滑展开的竖排列表毛玻璃弹层（不遮挡一级菜单） */
   .tab-sheet{position:fixed;inset:0;z-index:130;display:none}
@@ -201,7 +203,6 @@
   <nav class="bottom-nav" id="bottomNav">
     <button class="tab" data-group="g1" onclick="openTab('g1',this)"><span class="ti">🏠</span><span class="tl">房屋管理</span></button>
     <button class="tab" data-group="g_bill" onclick="openTab('g_bill',this)"><span class="ti">🧾</span><span class="tl">账单管理</span></button>
-    <button class="tab" data-group="g3" onclick="openTab('g3',this)"><span class="ti">⚙️</span><span class="tl">设置</span></button>
     <button class="tab" data-group="g4" onclick="openTab('g4',this)"><span class="ti">👤</span><span class="tl">我的</span></button>
   </nav>
   <div class="tab-sheet" id="tabSheet">
@@ -310,13 +311,10 @@ const NAV_GROUPS={
     {v:'history',l:'历史账单'},
     {v:'reading',l:'录入本月读数'}
   ]},
-  g3:{title:'设置', children:[
-    {v:'data',l:'数据备份'},
-    {v:'cloud',l:'云同步'}
-  ]},
   g4:{title:'个人中心', children:[
     {v:'stats',l:'数据统计'},
-    {v:'bp',l:'血压管理'}
+    {v:'bp',l:'血压管理'},
+    {v:'settings',l:'设置'}
   ]}
 };
 let currentView='addProperty';
@@ -362,7 +360,7 @@ function showView(v){
   highlightTab();
   const fn={addProperty:renderAddProperty,addRoom:renderAddRoom,defaultFees:renderDefaultFees,
     roomList:renderRoomList,reading:renderReading,bill:renderBill,history:renderHistoryBill,
-    data:renderData,cloud:renderCloud,auth:renderAuthManage,stats:renderStats,bp:renderBP}[v];
+    data:renderData,cloud:renderCloud,auth:renderAuthManage,stats:renderStats,bp:renderBP,settings:renderSettings}[v];
   if(fn)fn();
   window.scrollTo(0,0);
 }
@@ -1175,6 +1173,20 @@ function renderStats(){
         <div class="stat-card" onclick="openStatsModal('summary')">
           <div class="ico">📈</div><div class="t">统计汇总</div>
           <div class="d">按「房源 + 时间范围（起止年月）」汇总多月数据</div></div>
+      </div>
+    </div>`;
+}
+function renderSettings(){
+  $("contentInner").innerHTML=`<div class="topbar">⚙️ 设置</div>
+    <div class="card"><h2>设置</h2>
+      <p class="muted">管理你的数据备份、云端同步等选项，点击卡片进入对应功能。</p>
+      <div class="stat-cards">
+        <div class="stat-card" onclick="showView('data')">
+          <div class="ico">💾</div><div class="t">数据备份</div>
+          <div class="d">导出 / 导入 JSON 备份，本地数据诊断</div></div>
+        <div class="stat-card" onclick="showView('cloud')">
+          <div class="ico">☁️</div><div class="t">云同步</div>
+          <div class="d">云端账号登录、上传 / 拉取数据</div></div>
       </div>
     </div>`;
 }
