@@ -49,7 +49,7 @@
   .tab-sheet-mask{position:absolute;inset:0;background:rgba(28,38,28,.18)}
   .tab-sheet-panel{
     position:absolute;
-    width:min(280px,82vw);
+    width:min(200px,84vw);
     background:rgba(255,255,255,.78);
     -webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
     border:1px solid rgba(255,255,255,.7);
@@ -65,15 +65,14 @@
     transform:translateX(-50%) rotate(45deg);border-bottom-right-radius:3px}
   .tab-sheet-items{display:flex;flex-direction:column}
   .tab-item{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
-    width:100%;text-align:left;padding:14px 16px;border-radius:12px;
+    display:flex;align-items:center;gap:10px;
+    width:100%;text-align:left;padding:12px 16px;border-radius:12px;
     background:transparent;border:none;border-bottom:1px solid rgba(43,58,43,.08);
-    color:var(--ink2);font-size:16px;font-weight:700;cursor:pointer;transition:.12s;
+    color:var(--ink2);font-size:15px;font-weight:700;cursor:pointer;transition:.12s;
     -webkit-tap-highlight-color:transparent}
   .tab-item:last-child{border-bottom:none}
   .tab-item:active,.tab-item:hover{background:rgba(93,140,93,.10)}
   .tab-item.active{background:var(--brand-soft);color:var(--brand-d)}
-  .tab-item .ico{font-size:13px;color:var(--sub);opacity:.7}
   /* 面板顶部小标题（可选） */
   .tab-sheet-title{font-size:13px;color:var(--sub);font-weight:700;padding:6px 16px 10px}
   /* 内容区：底部留白必须覆盖导航栏+安全区，防止被遮挡 */
@@ -297,9 +296,7 @@ function openTab(g, el){
   // 二级菜单内小标题：标明来源组名
   $('tabSheetTitle').textContent=gp.title;
   $('tabSheetItems').innerHTML=gp.children.map(c=>
-    `<button class="tab-item ${currentView===c.v?'active':''}" data-view="${c.v}" onclick="showView('${c.v}');closeTabSheet()">
-       <span>${c.l}</span><span class="ico">🔗</span>
-     </button>`
+    `<button class="tab-item ${currentView===c.v?'active':''}" data-view="${c.v}" onclick="showView('${c.v}');closeTabSheet()">${c.l}</button>`
   ).join('');
   document.querySelectorAll('.bottom-nav .tab').forEach(t=>t.classList.toggle('active',t.dataset.group===g));
   $('tabSheet').classList.add('open');
@@ -310,7 +307,9 @@ function positionTabSheet(){
   const panel=$('tabSheetPanel'), arrow=$('tabSheetArrow'), nav=$('bottomNav');
   if(!panel||!nav||!$('tabSheet').classList.contains('open')) return;
   const navRect=nav.getBoundingClientRect();
-  const pw=Math.min(280, window.innerWidth*0.82);
+  const tabW=_openTabEl?_openTabEl.getBoundingClientRect().width:window.innerWidth/4;
+  // 弹层宽度尽量接近一级 tab，但留出最小可读宽度与屏幕上限
+  const pw=Math.max(tabW, Math.min(tabW*1.8, window.innerWidth*0.82));
   let tabCenter=window.innerWidth/2;
   if(_openTabEl){const r=_openTabEl.getBoundingClientRect(); tabCenter=r.left+r.width/2;}
   let left=Math.max(10, Math.min(tabCenter-pw/2, window.innerWidth-pw-10));
