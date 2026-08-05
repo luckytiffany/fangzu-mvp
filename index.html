@@ -1259,8 +1259,23 @@ function renderSettings(){
         <div class="stat-card" onclick="showView('cloud')">
           <div class="ico">☁️</div><div class="t">云同步</div>
           <div class="d">云端账号登录、上传 / 拉取数据</div></div>
+        <div class="stat-card" onclick="clearCache()" style="border:1px solid var(--danger)">
+          <div class="ico">🧹</div><div class="t" style="color:var(--danger)">清除缓存</div>
+          <div class="d">清空本机业务数据并退出登录，重新从云端同步</div></div>
       </div>
+      <p class="muted" style="margin-top:14px;font-size:13px">提示：当本机显示的数据与云端不一致（例如换设备后、清完云端垃圾数据后），点「清除缓存」即可让本机恢复干净状态，下次登录自动重新同步最新数据。</p>
     </div>`;
+}
+/* 清除本机缓存：删掉本地数据 key + 退出登录（清会话），再刷新页面，
+   下次登录会从云端重新拉取干净数据。保留记住的账号与云端配置，方便重新登录。 */
+function clearCache(){
+  if(!confirm("确定清除本机缓存吗？\n\n将清空本机保存的所有业务数据（房源 / 房间 / 读数 / 血压等），并退出当前登录。\n下次登录时会重新从云端同步最新数据。\n\n⚠️ 尚未上传到云端的数据将丢失。"))return;
+  try{localStorage.removeItem(KEY);}catch(e){}
+  const sb=getClient();
+  const reload=()=>{setTimeout(()=>location.reload(),700);};
+  toast("缓存已清除，正在重新加载…");
+  if(sb){try{sb.auth.signOut().then(reload).catch(reload);}catch(e){reload();}}
+  else reload();
 }
 /* ---------- 血压管理（个人健康记录） ---------- */
 let bpPeriodFilter='全部'; // 走势图测量时段筛选：全部/起床/上午/中午/晚上
