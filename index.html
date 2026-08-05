@@ -42,33 +42,40 @@
   .bottom-nav .tab .tl{font-size:13px;font-weight:700;white-space:nowrap}
   .bottom-nav .tab.active{color:var(--brand-d);background:var(--brand-soft)}
   .bottom-nav .tab:active{transform:translateY(1px)}
-  /* 二级菜单：从一级 tab 正上方上滑展开的毛玻璃弹层（不遮挡一级菜单） */
+  /* 二级菜单：从一级 tab 正上方上滑展开的竖排列表毛玻璃弹层（不遮挡一级菜单） */
   .tab-sheet{position:fixed;inset:0;z-index:130;display:none}
   .tab-sheet.open{display:block}
-  .tab-sheet-mask{position:absolute;inset:0;background:rgba(28,38,28,.28);
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  /* 外部遮罩只做轻微压暗，毛玻璃效果留给二级菜单面板 */
+  .tab-sheet-mask{position:absolute;inset:0;background:rgba(28,38,28,.18)}
   .tab-sheet-panel{
     position:absolute;
-    width:min(300px,86vw);
-    background:rgba(255,255,255,.72);
-    -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
-    border:1px solid rgba(255,255,255,.65);
-    border-radius:18px;padding:14px;max-height:62vh;overflow:auto;
-    box-shadow:0 14px 44px rgba(43,58,43,.26);
+    width:min(280px,82vw);
+    background:rgba(255,255,255,.78);
+    -webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
+    border:1px solid rgba(255,255,255,.7);
+    border-radius:16px;padding:8px 4px;max-height:62vh;overflow:auto;
+    box-shadow:0 14px 44px rgba(43,58,43,.22);
     animation:popUp .18s ease-out;transform-origin:bottom center}
-  @keyframes popUp{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes popUp{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
   /* 指向一级 tab 的小箭头，标明展开来源 */
   .tab-sheet-arrow{position:absolute;bottom:-8px;width:16px;height:16px;left:50%;
-    background:rgba(255,255,255,.72);
-    -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
-    border-right:1px solid rgba(255,255,255,.65);border-bottom:1px solid rgba(255,255,255,.65);
+    background:rgba(255,255,255,.78);
+    -webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
+    border-right:1px solid rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.7);
     transform:translateX(-50%) rotate(45deg);border-bottom-right-radius:3px}
-  .tab-sheet-title{font-size:15px;color:var(--ink2);font-weight:800;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed rgba(43,58,43,.18);display:flex;align-items:center;gap:6px}
-  .tab-sheet-title .dot{width:8px;height:8px;border-radius:50%;background:var(--brand)}
-  .tab-sheet-items{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .tab-item{display:block;width:100%;text-align:center;padding:16px 10px;border-radius:14px;background:rgba(245,239,228,.7);border:1px solid rgba(234,221,204,.8);color:var(--ink2);font-size:16px;font-weight:800;cursor:pointer;transition:.15s}
-  .tab-item:hover{background:rgba(237,228,211,.9)}
-  .tab-item.active{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;border-color:var(--brand)}
+  .tab-sheet-items{display:flex;flex-direction:column}
+  .tab-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    width:100%;text-align:left;padding:14px 16px;border-radius:12px;
+    background:transparent;border:none;border-bottom:1px solid rgba(43,58,43,.08);
+    color:var(--ink2);font-size:16px;font-weight:700;cursor:pointer;transition:.12s;
+    -webkit-tap-highlight-color:transparent}
+  .tab-item:last-child{border-bottom:none}
+  .tab-item:active,.tab-item:hover{background:rgba(93,140,93,.10)}
+  .tab-item.active{background:var(--brand-soft);color:var(--brand-d)}
+  .tab-item .ico{font-size:13px;color:var(--sub);opacity:.7}
+  /* 面板顶部小标题（可选） */
+  .tab-sheet-title{font-size:13px;color:var(--sub);font-weight:700;padding:6px 16px 10px}
   /* 内容区：底部留白必须覆盖导航栏+安全区，防止被遮挡 */
   .content{flex:1;padding:18px;min-width:0;padding-bottom:96px;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
   .topbar{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin-bottom:16px;font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(43,58,43,.05)}
@@ -287,9 +294,12 @@ function openTab(g, el){
   if($('tabSheet').classList.contains('open') && $('tabSheet').dataset.group===g){closeTabSheet();return;}
   _openTabEl=el||document.querySelector('.bottom-nav .tab[data-group="'+g+'"]');
   $('tabSheet').dataset.group=g;
-  $('tabSheetTitle').innerHTML='<span class="dot"></span>'+gp.title;
+  // 二级菜单内小标题：标明来源组名
+  $('tabSheetTitle').textContent=gp.title;
   $('tabSheetItems').innerHTML=gp.children.map(c=>
-    `<button class="tab-item ${currentView===c.v?'active':''}" data-view="${c.v}" onclick="showView('${c.v}');closeTabSheet()">${c.l}</button>`
+    `<button class="tab-item ${currentView===c.v?'active':''}" data-view="${c.v}" onclick="showView('${c.v}');closeTabSheet()">
+       <span>${c.l}</span><span class="ico">🔗</span>
+     </button>`
   ).join('');
   document.querySelectorAll('.bottom-nav .tab').forEach(t=>t.classList.toggle('active',t.dataset.group===g));
   $('tabSheet').classList.add('open');
@@ -300,7 +310,7 @@ function positionTabSheet(){
   const panel=$('tabSheetPanel'), arrow=$('tabSheetArrow'), nav=$('bottomNav');
   if(!panel||!nav||!$('tabSheet').classList.contains('open')) return;
   const navRect=nav.getBoundingClientRect();
-  const pw=Math.min(300, window.innerWidth*0.86);
+  const pw=Math.min(280, window.innerWidth*0.82);
   let tabCenter=window.innerWidth/2;
   if(_openTabEl){const r=_openTabEl.getBoundingClientRect(); tabCenter=r.left+r.width/2;}
   let left=Math.max(10, Math.min(tabCenter-pw/2, window.innerWidth-pw-10));
