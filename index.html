@@ -170,6 +170,7 @@
   .auth-card .switch{text-align:center;margin-top:18px;font-size:15px;color:var(--sub)}
   .auth-card .switch a{color:var(--brand-d);cursor:pointer;font-weight:700}
   .auth-err{color:var(--danger);font-size:15px;min-height:20px;margin-top:10px}
+  .auth-hint{color:var(--brand-d);font-size:14px;text-align:center;margin:8px 0 2px;font-weight:700}
 </style>
 </head>
 <body class="logged-out">
@@ -203,6 +204,7 @@
     <label>密码</label>
     <input id="a_pw" type="password" placeholder="至少6位">
     <div class="auth-err" id="a_err"></div>
+    <div class="auth-hint" id="a_remember" style="display:none">已记住该账号，点击「登录」即可进入</div>
     <div class="row-actions"><button class="btn-primary" id="a_submit" style="flex:1" onclick="authSubmit()">登 录</button></div>
     <div class="switch">还没有账号？<a onclick="authToggle()">注册新账号</a></div>
   </div>
@@ -1408,11 +1410,25 @@ function getClient(){if(cloud.client)return cloud.client;if(!cloud.url||!cloud.a
 function touch(){return new Date().toISOString();}
 function scheduleSync(){if(!cloud.user||_syncing)return;clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{pushToCloud();},1200);}
 function renderCloudIfActive(){const el=document.querySelector('[data-view="cloud"]');if(el&&el.classList.contains('active'))renderCloud();}
-function startupCloud(){loadCloudCfg();const sb=getClient();if(!sb){document.body.classList.add("logged-out");return;}sb.auth.getSession().then(({data})=>{if(data.session){cloud.user=data.session.user;pullFromCloud(true).then(()=>{document.body.classList.remove("logged-out");showView("addProperty");});}else{document.body.classList.add("logged-out");}}).catch(()=>{document.body.classList.add("logged-out");});}
+const REMEMBER_KEY="rental_mvp_remember";
+function saveRemember(phone,pw){try{localStorage.setItem(REMEMBER_KEY,JSON.stringify({phone,pw}));}catch(e){}}
+function loadRemember(){try{return JSON.parse(localStorage.getItem(REMEMBER_KEY))||null;}catch(e){return null;}}
+function prefillRemember(){
+  document.body.classList.add("logged-out"); // 始终停在登录页，不自动进站
+  const r=loadRemember();
+  if(r&&r.phone){$("a_phone").value=r.phone;$("a_pw").value=r.pw||"";const h=$("a_remember");if(h)h.style.display="block";}
+}
+function startupCloud(){loadCloudCfg();const sb=getClient();if(!sb){prefillRemember();return;}
+  sb.auth.getSession().then(({data})=>{
+    prefillRemember(); // 预填记住的账号，但仍停留在登录页
+    if(data.session){cloud.user=data.session.user;/* 记住会话但不自动跳转，等用户点击登录 */}
+    else{document.body.classList.add("logged-out");}
+  }).catch(()=>{document.body.classList.add("logged-out");prefillRemember();});
+}
 function saveCloudConfig(){cloud.url=$("c_url").value.trim();cloud.anonKey=$("c_key").value.trim();if(!cloud.url||!cloud.anonKey){toast("请填写完整");return;}cloud.client=null;getClient();saveCloudCfg();toast("配置已保存");renderCloud();}
 function normLogin(phone){return (phone||"").replace(/\s/g,"")+"@login.local";}
 let _authMode="login";
-function authToggle(){_authMode=_authMode==="login"?"signup":"login";$("a_submit").textContent=_authMode==="login"?"登 录":"注 册";$("a_err").textContent="";$("a_phone").value="";$("a_pw").value="";if($("a_phone").focus)$("a_phone").focus();}
+function authToggle(){_authMode=_authMode==="login"?"signup":"login";$("a_submit").textContent=_authMode==="login"?"登 录":"注 册";$("a_err").textContent="";if(_authMode==="login"){prefillRemember();}else{$("a_phone").value="";$("a_pw").value="";const h=$("a_remember");if(h)h.style.display="none";}if($("a_phone").focus)$("a_phone").focus();}
 async function authSubmit(){
   const phone=$("a_phone").value.trim();const pw=$("a_pw").value;$("a_err").textContent="";
   if(!/^\d{6,15}$/.test(phone)){$("a_err").textContent="请输入正确的手机号";return;}
@@ -1423,14 +1439,14 @@ async function authSubmit(){
     if(_authMode==="signup"){
       const {data,error}=await sb.auth.signUp({email,password:pw});
       if(error){$("a_err").textContent="注册失败："+error.message;return;}
-      if(data&&data.session){cloud.user=data.session.user;await pullFromCloud(true);enterApp();return;}
+      if(data&&data.session){cloud.user=data.session.user;saveRemember(phone,pw);await pullFromCloud(true);enterApp();return;}
       $("a_err").textContent="注册成功，但需先验证。请在 Supabase 关掉 Confirm email 后重试登录";_authMode="login";$("a_submit").textContent="登 录";return;
     }else{
       const {error}=await sb.auth.signInWithPassword({email,password:pw});
       if(error){$("a_err").textContent="登录失败："+error.message;return;}
       const {data}=await sb.auth.getSession();cloud.user=data.session?data.session.user:null;
       if(!cloud.user){$("a_err").textContent="登录失败，请重试";return;}
-      await pullFromCloud(true);enterApp();
+      saveRemember(phone,pw);await pullFromCloud(true);enterApp();
     }
   }catch(e){$("a_err").textContent="出错了："+(e&&e.message?e.message:e);}
 }
