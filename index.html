@@ -219,6 +219,12 @@
   .auth-card .switch a{color:var(--brand-d);cursor:pointer;font-weight:700}
   .auth-err{color:var(--danger);font-size:15px;min-height:20px;margin-top:10px}
   .auth-hint{color:var(--brand-d);font-size:14px;text-align:center;margin:8px 0 2px;font-weight:700}
+  /* 登录/同步中的全屏加载提示 */
+  .loading-mask{position:fixed;inset:0;background:rgba(245,242,237,.8);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:10000}
+  .loading-box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px 36px;box-shadow:0 12px 40px rgba(43,58,43,.15);display:flex;flex-direction:column;align-items:center;gap:14px;min-width:168px}
+  .loading-spinner{width:34px;height:34px;border:4px solid var(--brand-soft);border-top-color:var(--brand-d);border-radius:50%;animation:spin .8s linear infinite}
+  .loading-text{font-size:15px;font-weight:700;color:var(--ink2)}
+  @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body class="logged-out">
@@ -271,6 +277,12 @@
     <div class="switch">还没有账号？<a onclick="authToggle()">注册新账号</a></div>
   </div>
 </div>
+<div class="loading-mask" id="loadingMask" style="display:none">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">登录中…</div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script src="supabase.min.js"></script>
 
@@ -320,6 +332,9 @@ function curMonth(){const d=new Date();return d.getFullYear()+"-"+String(d.getMo
 function prevMonth(m){const[y,mm]=m.split("-").map(Number);const d=new Date(y,mm-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function monthLabel(m){const[y,mm]=m.split("-");return y+"年"+Number(mm)+"月";}
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600);}
+function showLoading(text){const m=$("loadingMask"),t=$("loadingText");if(t)t.textContent=text||"登录中…";if(m)m.style.display="flex";}
+function setLoading(text){const t=$("loadingText");if(t)t.textContent=text;}
+function hideLoading(){const m=$("loadingMask");if(m)m.style.display="none";}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function escapeHtml(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function getProp(id){return state.properties.find(p=>p.id===id);}
@@ -1826,20 +1841,25 @@ async function authSubmit(){
   if(pw.length<6){$("a_err").textContent="密码至少6位";return;}
   const sb=getClient();if(!sb){$("a_err").textContent="服务未连接，请刷新页面";return;}
   const email=normLogin(phone);
+  showLoading("登录中…"); // 点击后立即提示，避免用户以为没反应
   try{
     if(_authMode==="signup"){
       const {data,error}=await sb.auth.signUp({email,password:pw});
-      if(error){$("a_err").textContent="注册失败："+error.message;return;}
-      if(data&&data.session){cloud.user=data.session.user;saveRemember(phone,pw);await pullFromCloud(true);enterApp();return;}
+      if(error){hideLoading();$("a_err").textContent="注册失败："+error.message;return;}
+      if(data&&data.session){cloud.user=data.session.user;saveRemember(phone,pw);setLoading("正在同步云端数据…");await pullFromCloud(true);enterApp();hideLoading();return;}
+      hideLoading();
       $("a_err").textContent="注册成功，但需先验证。请在 Supabase 关掉 Confirm email 后重试登录";_authMode="login";$("a_submit").textContent="登 录";return;
     }else{
-      const {error}=await sb.auth.signInWithPassword({email,password:pw});
-      if(error){$("a_err").textContent="登录失败："+error.message;return;}
-      const {data}=await sb.auth.getSession();cloud.user=data.session?data.session.user:null;
-      if(!cloud.user){$("a_err").textContent="登录失败，请重试";return;}
-      saveRemember(phone,pw);await pullFromCloud(true);enterApp();
+      const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+      if(error){hideLoading();$("a_err").textContent="登录失败："+error.message;return;}
+      // 直接用登录返回的 session，省去一次多余的 getSession() 网络往返（约 0.5s）
+      const sess=data&&data.session;cloud.user=sess?sess.user:null;
+      if(!cloud.user){hideLoading();$("a_err").textContent="登录失败，请重试";return;}
+      saveRemember(phone,pw);
+      setLoading("正在同步云端数据…");
+      await pullFromCloud(true);enterApp();hideLoading();
     }
-  }catch(e){$("a_err").textContent="出错了："+(e&&e.message?e.message:e);}
+  }catch(e){hideLoading();$("a_err").textContent="出错了："+(e&&e.message?e.message:e);}
 }
 function enterApp(){document.body.classList.remove("logged-out");renderCloud();showView("home");}
 function cloudSignOut(){const sb=getClient();if(sb)sb.auth.signOut();cloud.user=null;renderCloud();toast("已登出");}
