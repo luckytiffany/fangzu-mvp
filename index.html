@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>房租水电管理</title>
+<link rel="icon" type="image/png" href="app-icon.png?v=8">
+<link rel="apple-touch-icon" href="app-icon.png?v=8">
+<meta name="apple-mobile-web-app-title" content="房租水电管理">
+<meta name="theme-color" content="#5d8c5d">
 <style>
   :root{
     /* —— 品牌主色：自然绿（保留现有品牌：信任 + 生活化）—— */
@@ -262,10 +266,16 @@
   .home-hero .float-card b{display:block;color:var(--c-primary-700);font-size:15px}
   .home-cta{display:flex;justify-content:center;margin:18px 0}
   .home-cta .btn-primary{border-radius:30px;padding:14px 32px;font-size:17px;display:inline-flex;align-items:center;gap:8px}
-  .home-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
-  .home-quick .qk{background:var(--c-surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px 4px;text-align:center}
-  .home-quick .qk .num{font-size:20px;font-weight:800;color:var(--c-primary-700);font-variant-numeric:tabular-nums}
-  .home-quick .qk .lab{font-size:11px;color:var(--sub);margin-top:4px}
+  .home-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .home-quick .qk{background:rgba(255,255,255,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.85);border-radius:var(--radius-xl);padding:14px 4px 12px;text-align:center;box-shadow:0 8px 24px rgba(28,38,28,.08),inset 0 1px 1px rgba(255,255,255,.9);transition:transform .15s,box-shadow .15s}
+  .home-quick .qk:active{transform:scale(.96)}
+  .home-quick .qk .ico{width:44px;height:44px;margin:0 auto 8px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 14px rgba(0,0,0,.12),inset 0 1px 1px rgba(255,255,255,.45)}
+  .home-quick .qk:nth-child(1) .ico{background:linear-gradient(135deg,#ff9a56 0%,#ff6b6b 100%)}
+  .home-quick .qk:nth-child(2) .ico{background:linear-gradient(135deg,#5b8def 0%,#7b61ff 100%)}
+  .home-quick .qk:nth-child(3) .ico{background:linear-gradient(135deg,#2dd36f 0%,#28c76f 100%)}
+  .home-quick .qk:nth-child(4) .ico{background:linear-gradient(135deg,#ff5e9a 0%,#b75cff 100%)}
+  .home-quick .qk .num{font-size:18px;font-weight:800;color:var(--c-gray-800);font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+  .home-quick .qk .lab{font-size:11px;color:var(--c-gray-600);margin-top:4px;font-weight:600}
   .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
   .home-area{position:relative;background:linear-gradient(135deg,var(--c-surface),var(--c-accent-100));border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 14px;min-height:110px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:6px;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s,border-color .15s}
   .home-area:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--c-primary-200)}
@@ -1371,10 +1381,10 @@ function renderHome(){
       </div>
     </div>
     <div class="home-quick">
-      <div class="qk"><div class="num">${propCount}</div><div class="lab">房源</div></div>
-      <div class="qk"><div class="num">${roomCount}</div><div class="lab">房间</div></div>
-      <div class="qk"><div class="num">¥${fmt(monthTotal)}</div><div class="lab">本月应收</div></div>
-      <div class="qk"><div class="num">${unreadRooms}</div><div class="lab">待抄表</div></div>
+      <div class="qk"><div class="ico">🏠</div><div class="num">${propCount}</div><div class="lab">房源</div></div>
+      <div class="qk"><div class="ico">🚪</div><div class="num">${roomCount}</div><div class="lab">房间</div></div>
+      <div class="qk"><div class="ico">💰</div><div class="num">¥${fmt(monthTotal)}</div><div class="lab">本月应收</div></div>
+      <div class="qk"><div class="ico">⚡</div><div class="num">${unreadRooms}</div><div class="lab">待抄表</div></div>
     </div>
     <div class="home-cta"><button class="btn-primary" onclick="showView('reading')">去录入本月读数 →</button></div>
   </div>`;
