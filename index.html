@@ -254,7 +254,7 @@
   .home-greet h1{margin:0;font-size:26px;color:var(--ink2);line-height:1.3}
   .home-greet p{margin:6px 0 0;color:var(--sub);font-size:15px}
   .home-hero{position:relative;background:linear-gradient(160deg,var(--c-primary-50) 0%,var(--c-accent-100) 100%);border:1px solid var(--line);border-radius:22px;margin:18px 0;overflow:hidden}
-  .hero-video{display:block;width:100%;height:340px;object-fit:cover;background:#eef1f3}
+  .hero-img{display:block;width:100%;height:340px;object-fit:cover;background:#eef1f3}
   .home-hero .float-card{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.9);border-radius:var(--radius-md);padding:9px 13px;box-shadow:0 4px 14px rgba(43,58,43,.12);font-size:13px;color:var(--ink2);text-align:left;z-index:3}
   .home-hero-cap{position:absolute;left:0;right:0;bottom:0;padding:38px 18px 16px;text-align:left;color:#fff;z-index:2;background:linear-gradient(to top,rgba(15,24,15,.66) 0%,rgba(15,24,15,.34) 46%,rgba(15,24,15,0) 100%)}
   .home-hero-cap .t{font-size:20px;font-weight:800;text-shadow:0 1px 5px rgba(0,0,0,.45)}
@@ -1364,7 +1364,7 @@ function renderHome(){
     </div>
     <div class="home-hero">
       <div class="float-card"><b>${unreadRooms}</b>间房待抄表</div>
-      <video class="hero-video" id="heroVideo" src="hero.mp4?v=2" autoplay muted loop playsinline webkit-playsinline preload="auto"></video>
+      <img class="hero-img" src="hero.jpg?v=7" alt="房租水电管理">
       <div class="home-hero-cap">
         <div class="t">房租水电管理</div>
         <div class="d">房东随身记账小助手</div>
@@ -1377,37 +1377,7 @@ function renderHome(){
       <div class="qk"><div class="num">${unreadRooms}</div><div class="lab">待抄表</div></div>
     </div>
     <div class="home-cta"><button class="btn-primary" onclick="showView('reading')">去录入本月读数 →</button></div>
-  </div>
-  <div class="card">
-    <h3>功能区域（初稿）</h3>
-    <p class="muted">点击下方编号区域，后续会按需求填充具体功能内容。</p>
-    <div class="home-grid">
-      <div class="home-area" onclick="showView('bill')"><span class="badge">1</span><span class="ico">🧾</span><span class="t">本月账单</span><span class="d">查看并发送当月账单</span></div>
-      <div class="home-area" onclick="showView('reading')"><span class="badge">2</span><span class="ico">📝</span><span class="t">录入读数</span><span class="d">快速抄表水电气</span></div>
-      <div class="home-area" onclick="showView('history')"><span class="badge">3</span><span class="ico">📜</span><span class="t">历史账单</span><span class="d">查询过往月份账单</span></div>
-      <div class="home-area" onclick="showView('roomList')"><span class="badge">4</span><span class="ico">🏢</span><span class="t">房间列表</span><span class="d">管理房源与租户</span></div>
-      <div class="home-area" onclick="showView('stats')"><span class="badge">5</span><span class="ico">📊</span><span class="t">数据统计</span><span class="d">导出报表与汇总</span></div>
-      <div class="home-area" onclick="showView('bp')"><span class="badge">6</span><span class="ico">❤️</span><span class="t">血压管理</span><span class="d">记录健康数据</span></div>
-    </div>
   </div>`;
-  // 首页动图：自动播放 + 约 10 秒循环（适配微信内置浏览器）
-  const heroV=document.getElementById('heroVideo');
-  if(heroV){
-    heroV.play().catch(()=>{});
-    heroV.addEventListener('loadedmetadata',()=>{
-      const d=heroV.duration;
-      if(d>0 && d<9.5){
-        // 视频短于约 10 秒：播完暂停补足到 10 秒再重播，形成"间隔 10 秒循环"
-        heroV.loop=false;
-        heroV.addEventListener('ended',()=>{
-          const wait=Math.max(0,10000-d*1000);
-          setTimeout(()=>{heroV.currentTime=0;heroV.play().catch(()=>{});},wait);
-        });
-      }else{
-        heroV.loop=true; // 约 10 秒及以上：直接无缝循环
-      }
-    });
-  }
 }
 
 /* ---------- 数据统计（月度统计报表） ---------- */
