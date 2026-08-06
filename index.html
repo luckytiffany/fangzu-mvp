@@ -185,9 +185,12 @@
   .home-header .loc{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;color:var(--ink2)}
   .home-greet h1{margin:0;font-size:26px;color:var(--ink2);line-height:1.3}
   .home-greet p{margin:6px 0 0;color:var(--sub);font-size:15px}
-  .home-hero{position:relative;background:linear-gradient(160deg,var(--brand-soft) 0%,#f5efe4 100%);border:1px solid var(--line);border-radius:22px;padding:28px 22px;margin:18px 0;text-align:center;overflow:hidden}
-  .home-hero .big-ico{font-size:86px;line-height:1;margin:8px 0}
-  .home-hero .float-card{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.9);border-radius:14px;padding:10px 14px;box-shadow:0 4px 14px rgba(43,58,43,.1);font-size:13px;color:var(--sub);text-align:left}
+  .home-hero{position:relative;background:linear-gradient(160deg,var(--brand-soft) 0%,#f5efe4 100%);border:1px solid var(--line);border-radius:22px;margin:18px 0;overflow:hidden;text-align:center}
+  .hero-video{display:block;width:100%;height:auto;max-height:260px;object-fit:cover;background:#eef1f3}
+  .home-hero .float-card{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.9);border-radius:14px;padding:10px 14px;box-shadow:0 4px 14px rgba(43,58,43,.1);font-size:13px;color:var(--sub);text-align:left;z-index:2}
+  .home-hero-cap{padding:14px 22px 22px}
+  .home-hero-cap .t{font-size:18px;font-weight:800;color:var(--ink2)}
+  .home-hero-cap .d{font-size:14px;color:var(--sub);margin-top:4px}
   .home-hero .float-card b{display:block;color:var(--brand-d);font-size:15px}
   .home-cta{display:flex;justify-content:center;margin:18px 0}
   .home-cta .btn-primary{border-radius:30px;padding:14px 32px;font-size:17px;display:inline-flex;align-items:center;gap:8px}
@@ -1201,9 +1204,11 @@ function renderHome(){
     </div>
     <div class="home-hero">
       <div class="float-card"><b>${unreadRooms}</b>间房待抄表</div>
-      <div class="big-ico">🏘️</div>
-      <div style="font-size:18px;font-weight:800;color:var(--ink2)">房租水电管理</div>
-      <div style="font-size:14px;color:var(--sub);margin-top:4px">房东随身记账小助手</div>
+      <video class="hero-video" id="heroVideo" src="hero.mp4?v=2" autoplay muted loop playsinline webkit-playsinline preload="auto"></video>
+      <div class="home-hero-cap">
+        <div class="t">房租水电管理</div>
+        <div class="d">房东随身记账小助手</div>
+      </div>
     </div>
     <div class="home-quick">
       <div class="qk"><div class="num">${propCount}</div><div class="lab">房源</div></div>
@@ -1225,6 +1230,24 @@ function renderHome(){
       <div class="home-area" onclick="showView('bp')"><span class="badge">6</span><span class="ico">❤️</span><span class="t">血压管理</span><span class="d">记录健康数据</span></div>
     </div>
   </div>`;
+  // 首页动图：自动播放 + 约 10 秒循环（适配微信内置浏览器）
+  const heroV=document.getElementById('heroVideo');
+  if(heroV){
+    heroV.play().catch(()=>{});
+    heroV.addEventListener('loadedmetadata',()=>{
+      const d=heroV.duration;
+      if(d>0 && d<9.5){
+        // 视频短于约 10 秒：播完暂停补足到 10 秒再重播，形成"间隔 10 秒循环"
+        heroV.loop=false;
+        heroV.addEventListener('ended',()=>{
+          const wait=Math.max(0,10000-d*1000);
+          setTimeout(()=>{heroV.currentTime=0;heroV.play().catch(()=>{});},wait);
+        });
+      }else{
+        heroV.loop=true; // 约 10 秒及以上：直接无缝循环
+      }
+    });
+  }
 }
 
 /* ---------- 数据统计（月度统计报表） ---------- */
